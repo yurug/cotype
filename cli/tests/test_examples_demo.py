@@ -205,18 +205,24 @@ def test_bg_claude_multi_round_section_based(tmp_path: Path):
     env = {**os.environ, "STILE_DEMO_FAKE_CLAUDE": "1"}
 
     procs = []
+    log_paths: dict[str, Path] = {}
+    log_handles = []
     for role in ("code", "tests", "docs"):
-        # The agent's polling loop prints a status line per cycle. Across
-        # several rounds with three agents that adds up; on a slow runner
-        # the captured PIPE buffer can fill and block the writers
-        # (intermittent dead-lock on macOS). We assert on file content,
-        # not on the agents' stdout, so route both streams to DEVNULL.
+        # Per-role log file in the work dir. PIPE would buffer-deadlock
+        # over multiple rounds; DEVNULL hid every diagnostic when the
+        # test flaked. A file is the best of both worlds -- we drain
+        # nothing during the run and dump everything in `_dump_logs()`
+        # if we ever fail an assertion.
+        log = work / f"{role}.log"
+        log_paths[role] = log
+        fh = open(log, "w")
+        log_handles.append(fh)
         p = subprocess.Popen(
             [sys.executable, str(BG_CLAUDE), role],
             cwd=str(work),
             env=env,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            stdout=fh,
+            stderr=subprocess.STDOUT,
         )
         procs.append((role, p))
 
@@ -228,6 +234,14 @@ def test_bg_claude_multi_round_section_based(tmp_path: Path):
             time.sleep(0.2)
         return False
 
+    def _dump_logs() -> str:
+        out = ["\n=== task.md ===\n", (work / "task.md").read_text(), "\n"]
+        for role, log in log_paths.items():
+            out.append(f"\n=== {role}.log ===\n")
+            out.append(log.read_text() if log.exists() else "(empty)")
+            out.append("\n")
+        return "".join(out)
+
     # Round 1: distinctive substrings from each round-0 canned body.
     # Generous deadline because macOS CI runners can be 5-10x slower at
     # subprocess-heavy work than the Linux ones.
@@ -236,8 +250,7 @@ def test_bg_claude_multi_round_section_based(tmp_path: Path):
         "tests": "assert sum_evens([1, 2, 3, 4]) == 6",
         "docs":  "Empty input returns 0",
     }
-    assert _wait_for(round1, time.time() + 60.0), \
-        (work / "task.md").read_text()
+    assert _wait_for(round1, time.time() + 60.0), _dump_logs()
 
     # Edit `## spec` directly (simulating the puppeteer's helper).
     sys_path = sys.path[:]
@@ -281,14 +294,13 @@ def test_bg_claude_multi_round_section_based(tmp_path: Path):
         "tests": 'except ValueError:',
         "docs":  'Raises `ValueError`',
     }
-    assert _wait_for(round2, time.time() + 60.0), \
-        (work / "task.md").read_text()
+    assert _wait_for(round2, time.time() + 60.0), _dump_logs()
 
     final = (work / "task.md").read_text()
     # Each section heading must appear exactly once -- agents replace
     # bodies in place rather than appending new copies.
     for header in ("## spec", "## code", "## tests", "## docs"):
-        assert final.count(header) == 1, f"{header!r} count != 1\n{final}"
+        assert final.count(header) == 1, f"{header!r} count != 1{_dump_logs()}"
 
     for _role, p in procs:
         p.terminate()
@@ -296,5 +308,7 @@ def test_bg_claude_multi_round_section_based(tmp_path: Path):
             p.wait(timeout=3)
         except subprocess.TimeoutExpired:
             p.kill()
+    for fh in log_handles:
+        fh.close()
 
 
