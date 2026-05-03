@@ -13,7 +13,9 @@ related: [spec-algorithms, properties-functional]
 
 ## 1. Summary
 
-`stile` is a small, editor-agnostic command-line tool that prevents lost updates when a text file is modified concurrently by a human editor and one or more processes.
+`stile` is a small, editor-agnostic command-line tool that prevents lost updates when a text file is modified concurrently by a human and one or more processes — typically AI agents.
+
+The primary use case is a **shared text file used as the communication medium between a user and one or more agents, in place of a sequential chat**. The user writes; agents read and edit the file in place to respond or to do work; `stile` keeps every actor's view consistent. Disjoint edits auto-merge. Overlapping edits surface as explicit conflicts that the user resolves. There is no chat transcript — the file *is* the workspace.
 
 The v0 product is intentionally simple:
 
@@ -90,15 +92,39 @@ v0 must not implement:
 
 A user edits `file.txt` in Emacs, Vim, VS Code, or another editor. The editor integration calls `stile open` when loading and `stile save` when saving.
 
+### AI agent
+
+An LLM-driven assistant, code generator, reviewer, or other automated worker reads `file.txt` to understand context and writes back to share results, ask follow-ups, or annotate the user's text. It uses the same `open`/`save` flow as a human editor — there is no privileged path.
+
 ### Process writer
 
-A script, agent, formatter, generator, or long-running service computes a new version of `file.txt`. It uses `stile open` to capture the base, then `stile save` to submit its candidate version.
+A script, formatter, build hook, or long-running service that computes a new version of `file.txt`. Same protocol again: `open` to capture the base, then `save` to submit a candidate.
 
 ### Tool author
 
-An editor plugin author needs a tiny protocol with precise return codes and JSON output.
+An editor plugin author or agent harness author needs a tiny protocol with precise return codes and JSON output.
 
 ## 7. Core user stories
+
+### US0: Shared file as the substrate for human-agent collaboration (primary)
+
+A user and one or more agents collaborate by editing a single text file together — for example, `task.md`, `chat.md`, or any document where instructions, replies, code blocks, and review notes accumulate in place.
+
+```text
+T0  user opens task.md, writes a question.
+T1  agent A runs `stile open task.md`, reads from base_path, computes a reply,
+    writes it inline under the question, runs `stile save`. mode = direct.
+T2  user reads the agent's reply, types a follow-up, saves through stile.
+    mode = direct.
+T3  agent B (a different worker) is also running. It opens task.md, edits a
+    different section, saves. The user's edit and agent B's edit don't
+    overlap -- mode = merged.
+T4  user and agent A both edit the same section at once. stile refuses to
+    overwrite either side. mode = conflict; user opens the conflict dump
+    and decides.
+```
+
+The file is a persistent, version-controllable workspace that the user can read, edit, and redirect at any moment. Multiple agents can act in parallel without a central UI. `stile` is what makes the whole pattern safe.
 
 ### US1: Direct save when no one else changed the file
 
