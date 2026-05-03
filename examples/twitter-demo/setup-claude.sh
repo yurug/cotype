@@ -21,6 +21,10 @@ mkdir -p "$WORK"
 cat > "$WORK/task.md" <<'EOF'
 # `sum_evens(xs)` — a tiny collaborative function
 
+> Section ownership: `spec` is yours (the user). `code`, `tests`, `docs`
+> are each owned by an agent that reacts to the section above it.
+
+
 ## spec
 
 - Given a list of integers, return the sum of the even ones.

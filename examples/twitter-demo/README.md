@@ -126,7 +126,10 @@ sequence; you may want to trim the cast file.
 A short concrete pedagogical task: **collaboratively design
 `sum_evens(xs)`** as a structured Markdown design doc. The user owns
 the spec; three agents each own one downstream section and react to
-the section they depend on:
+the section they depend on. The recording makes the user role
+explicit by giving the puppeteer its own `user` pane — and the
+puppeteer types the new spec lines into Emacs **one keystroke at a
+time** (visible character-by-character typing), then `C-x C-s`.
 
 ```text
    ┌─────────┐     reads      ┌────────┐
@@ -175,6 +178,22 @@ fall out of this design:
    its dependency section; until that hash changes, the agent doesn't
    write anything (would be a `noop` save anyway).
 
+### Layout
+
+```
++---------------------------------------------------+
+|                                                   |
+|              GNU Emacs (your editor)              |
+|              -- stile-mode active --              |
+|                                                   |
++--------+--------------+-------------+-------------+
+|  user  | agent:code   | agent:tests | agent:docs  |
++--------+--------------+-------------+-------------+
+```
+
+The bottom-left `user` pane runs `bg-puppeteer.py`. Each agent pane
+runs `bg-claude.py <role>`. They share `task.md` through `stile`.
+
 ### What the recording shows
 
 ```text
@@ -189,20 +208,23 @@ T=1-3s   `code` reacts to the seed `## spec` and saves
              docs:   "Return the sum of the even integers in `xs`.
                       Empty input returns 0."
 
-T=12s    puppeteer M-x's `stile-demo-add-spec` to add a bullet under
-         `## spec`:  "Reject non-integer input with ValueError."
-         code rewrites the body to validate inputs:
-             for x in xs:
-                 if not isinstance(x, int) or isinstance(x, bool):
-                     raise ValueError(f"non-integer: {x!r}")
-         tests grows a try/except assertion; docs updates the prose.
+T=12s    The `user` pane shows
+             ✎ typing in ## spec…
+             "Reject non-integer input with ValueError."
+         and the puppeteer pecks that bullet character-by-character
+         into Emacs's `## spec` section (visible typing, ~2-3 s),
+         then hits `C-x C-s`. stile-mode routes the save through stile.
+         `code` rewrites the body to validate inputs; `tests` grows a
+         try/except assertion; `docs` updates the prose.
 
-T=27s    puppeteer adds "Accept any iterable, not just a list."
-         code switches to a manual accumulator; tests adds an
-         `assert sum_evens(iter([2,4,6])) == 12`; docs becomes
+T=27s    `user` pane:  ✎ typing in ## spec…
+             "Accept any iterable, not just a list."
+         `code` switches to a manual accumulator; `tests` adds an
+         `assert sum_evens(iter([2,4,6])) == 12`; `docs` becomes
          "Accepts any iterable of int; raises ValueError on non-integer".
 
-T=40s+   settled. Three sections evolved in real time, no errors.
+T=40s+   settled. The user typed; the agents reacted; the document
+         evolved -- all live, no errors, no merge artefacts.
 ```
 
 If `claude` is not on `PATH` (or `STILE_DEMO_FAKE_CLAUDE=1`), the

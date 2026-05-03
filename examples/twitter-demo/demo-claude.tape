@@ -26,22 +26,24 @@ Show
 # Round 1: Emacs is up. The `code` agent reacts to the seeded `## spec`
 # and writes the first implementation. `tests` and `docs` waited for the
 # `## code` placeholder to fill in; once it does they cascade.
-# With fake-claude this finishes in <2 s; with real claude expect
-# ~10-15 s for three concurrent calls.
+# Fake-claude: <2 s; real claude: ~10-15 s for three concurrent calls.
 Sleep 12000ms
 
-# Round 2 (puppeteer T~12 s): user M-x's `stile-demo-add-spec` to
-# insert a stricter spec line:
+# Round 2 (puppeteer T~12 s): the `user` pane shows
+#     ✎ typing in ## spec…
 #     "Reject non-integer input with ValueError."
-# code rewrites the body to validate; tests adds a try/except
-# assertion; docs updates the docstring. ~10-15 s.
-Sleep 15000ms
+# while the puppeteer hits M-x stile-demo-position-for-spec and then
+# pecks the bullet text char-by-char into the spec section of Emacs
+# (~2-3 s of visible typing), then C-x C-s. `code` rewrites the body
+# to validate; tests adds a try/except assertion; docs updates
+# the docstring. ~12-18 s total.
+Sleep 18000ms
 
-# Round 3 (puppeteer T~27 s): user adds
+# Round 3 (puppeteer T~27 s): user types
 #     "Accept any iterable, not just a list."
-# code switches to a manual-loop accumulator; tests adds an `iter(...)`
-# assertion; docs becomes "Accepts any iterable of int". ~10-15 s.
-Sleep 12000ms
+# `code` switches to a manual-loop accumulator; tests adds an
+# `iter(...)` assertion; docs becomes "Accepts any iterable of int".
+Sleep 14000ms
 
 # Linger on the final state.
 Sleep 5000ms

@@ -34,23 +34,38 @@
 (line-number-mode 1)
 (column-number-mode 0)
 
-;; Helper for the puppeteer: add a bullet at the end of the `## spec'
-;; section and save through stile. The puppeteer just needs to type
-;;   M-x stile-demo-add-spec RET <text> RET
-;; to drop a new bullet and save in one keypress sequence.
+;; Helpers for the puppeteer (which simulates the human user).
+;;
+;; The richer flow is:
+;;    M-x stile-demo-position-for-spec RET   ;; cursor lands ready to type
+;;    <user types the bullet text, char by char>
+;;    C-x C-s                                ;; save through stile-mode
+;;
+;; That makes the typing visible in the editor pane (one keystroke at a
+;; time, paced by the puppeteer's tmux send-keys cadence) and keeps the
+;; "user" role explicit on screen.
+
+(defun stile-demo-position-for-spec ()
+  "Move point to a fresh bullet line at the end of `## spec' and insert
+the leading \"- \" so the user can type the bullet text immediately.
+Does NOT save -- the puppeteer hits `C-x C-s' after typing."
+  (interactive)
+  (goto-char (point-min))
+  (when (re-search-forward "^## spec\\s-*$" nil t)
+    (forward-line 1)
+    (while (looking-at "^- ")
+      (forward-line 1))
+    (insert "- ")))
+
 (defun stile-demo-add-spec (text)
-  "Insert TEXT as a new bullet at the end of the `## spec' section of
-the current buffer, then save through `stile-mode'."
+  "One-shot insert -- legacy convenience for the simple-demo flow.
+Insert TEXT as a new bullet at the end of `## spec' and save."
   (interactive "sNew spec line: ")
   (save-excursion
     (goto-char (point-min))
     (when (re-search-forward "^## spec\\s-*$" nil t)
-      ;; Move into the section body.
       (forward-line 1)
-      ;; Skip past existing bullet lines.
       (while (looking-at "^- ")
         (forward-line 1))
-      ;; Insert the new bullet on a fresh line BEFORE whatever non-bullet
-      ;; line we landed on (usually a blank line or the next `## ' header).
       (insert "- " text "\n")))
   (save-buffer))

@@ -1,13 +1,23 @@
 #!/usr/bin/env bash
 # Multi-round, claude-driven Twitter demo.
 #
-# Layout: real Emacs (top) + three polling Claude agents (bottom). A
-# background "puppeteer" types user follow-ups into Emacs at scripted
-# times (see bg-puppeteer.py), so the recording shows real ping-pong:
+# Layout (5 panes total):
 #
-#   round 1: agents respond to the seeded ## user question
-#   round 2: puppeteer types a follow-up, agents respond again
-#   round 3: puppeteer types a wrap-up, agents wrap
+#   +--------------------------------------------------+
+#   |                                                  |
+#   |              Emacs (your editor)                 |
+#   |              -- stile-mode active --             |
+#   |                                                  |
+#   +-------+--------------+-------------+-------------+
+#   | user  | agent:code   | agent:tests | agent:docs  |
+#   +-------+--------------+-------------+-------------+
+#
+# The bottom-left "user" pane runs bg-puppeteer.py, which simulates a
+# human: it M-x's a small Emacs helper to position point in `## spec`,
+# then types the new bullet character-by-character, then C-x C-s. The
+# three agents (`bg-claude.py code|tests|docs`) poll task.md and
+# regenerate the body of the section they own when their dependency
+# changes.
 #
 # `claude` CLI is required for real LLM responses; without it the
 # agents fall back to canned bodies (STILE_DEMO_FAKE_CLAUDE=1).
@@ -29,14 +39,19 @@ tmux kill-session -t "$SESSION" 2>/dev/null || true
 "$DIR/setup-claude.sh" "$WORK" >/dev/null
 
 # Capture pane IDs (immune to base-index / pane-base-index settings).
+# Pane geometry tuned for a 180-col session: bottom row = 14 rows tall;
+# four bottom panes are ~32, 49, 49, 50 cols (user is the narrowest).
 viewer=$(tmux new-session -d -s "$SESSION" -c "$WORK" -x 180 -y 50 \
     -P -F "#{pane_id}")
-agent_a=$(tmux split-window -v -t "$viewer"  -l 14  -c "$WORK" \
+user_pane=$(tmux split-window -v -t "$viewer"     -l 14  -c "$WORK" \
     -P -F "#{pane_id}")
-agent_b=$(tmux split-window -h -t "$agent_a" -l 120 -c "$WORK" \
+agent_c=$(tmux split-window -h -t "$user_pane" -l 50 -c "$WORK" \
     -P -F "#{pane_id}")
-agent_c=$(tmux split-window -h -t "$agent_b" -l 60  -c "$WORK" \
+agent_b=$(tmux split-window -h -t "$user_pane" -l 49 -c "$WORK" \
     -P -F "#{pane_id}")
+agent_a=$(tmux split-window -h -t "$user_pane" -l 49 -c "$WORK" \
+    -P -F "#{pane_id}")
+# Geometry now: user_pane (~32 cols) | agent_a (49) | agent_b (49) | agent_c (50)
 
 # Top pane viewer: real Emacs running stile-mode, fallback to bg-viewer.sh
 if command -v emacs >/dev/null 2>&1; then
@@ -47,21 +62,15 @@ else
 fi
 
 ENV_PREFIX='ZDOTDIR=/dev/null BASH_ENV= ENV='
-# Pass through STILE_DEMO_FAKE_CLAUDE if set, so the agent panes inherit it.
 if [[ "${STILE_DEMO_FAKE_CLAUDE:-}" ]]; then
     ENV_PREFIX="$ENV_PREFIX STILE_DEMO_FAKE_CLAUDE=1"
 fi
 
-tmux send-keys -t "$viewer"  "clear; $ENV_PREFIX $VIEWER_CMD" Enter
-tmux send-keys -t "$agent_a" "clear; $ENV_PREFIX exec python3 '$DIR/bg-claude.py' code"  Enter
-tmux send-keys -t "$agent_b" "clear; $ENV_PREFIX exec python3 '$DIR/bg-claude.py' tests" Enter
-tmux send-keys -t "$agent_c" "clear; $ENV_PREFIX exec python3 '$DIR/bg-claude.py' docs"  Enter
-
-# Background puppeteer drives Emacs; logs to a file (not a pane) so the
-# 4-pane layout stays clean.
-( python3 "$DIR/bg-puppeteer.py" "$viewer" >"/tmp/stile-puppeteer.log" 2>&1 ) &
-puppeteer_pid=$!
-trap 'kill $puppeteer_pid 2>/dev/null || true' EXIT
+tmux send-keys -t "$viewer"    "clear; $ENV_PREFIX $VIEWER_CMD" Enter
+tmux send-keys -t "$user_pane" "clear; $ENV_PREFIX exec python3 '$DIR/bg-puppeteer.py' '$viewer'" Enter
+tmux send-keys -t "$agent_a"   "clear; $ENV_PREFIX exec python3 '$DIR/bg-claude.py' code"  Enter
+tmux send-keys -t "$agent_b"   "clear; $ENV_PREFIX exec python3 '$DIR/bg-claude.py' tests" Enter
+tmux send-keys -t "$agent_c"   "clear; $ENV_PREFIX exec python3 '$DIR/bg-claude.py' docs"  Enter
 
 tmux set-option -t "$SESSION" status off
 tmux attach-session -t "$SESSION"
