@@ -3,7 +3,7 @@ id: spec-error-taxonomy
 type: spec
 summary: Every stable error name, when it fires, exit code, and JSON payload.
 domain: spec
-last-updated: 2026-05-02
+last-updated: 2026-05-03
 depends-on: [spec-data-model]
 refines: []
 related: [spec-algorithms, spec-api-contracts, conventions-error-handling]

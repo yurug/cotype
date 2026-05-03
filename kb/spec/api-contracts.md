@@ -3,7 +3,7 @@ id: spec-api-contracts
 type: spec
 summary: CLI inputs and JSON output shapes for every stile command.
 domain: spec
-last-updated: 2026-05-02
+last-updated: 2026-05-03
 depends-on: [spec-data-model, spec-error-taxonomy]
 refines: [prd]
 related: [spec-algorithms]

@@ -3,7 +3,7 @@ id: properties-edge-cases
 type: constraint
 summary: T1..T20 — boundary conditions and conformance tests with expected behaviour.
 domain: properties
-last-updated: 2026-05-02
+last-updated: 2026-05-03
 depends-on: [spec-algorithms, properties-functional]
 refines: []
 related: []

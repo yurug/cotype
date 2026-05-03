@@ -5,11 +5,34 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "stile"
 version = "0.1.0"
-description = "Universal safe-save for concurrent text files"
+description = "Universal safe-save for concurrent text files — let a user and one or more AI agents edit the same file together without lost updates."
 requires-python = ">=3.11"
 license = {text = "MIT"}
-authors = [{name = "stile contributors"}]
+authors = [{name = "Yann Régis-Gianas", email = "yann@regis-gianas.org"}]
 readme = "README.md"
+keywords = ["text", "file", "safe-save", "concurrent", "merge", "diff3", "agents", "llm", "collaboration"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Version Control",
+    "Topic :: Text Processing",
+    "Topic :: Utilities",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Homepage      = "https://github.com/yurug/stile"
+Repository    = "https://github.com/yurug/stile"
+Issues        = "https://github.com/yurug/stile/issues"
+Changelog     = "https://github.com/yurug/stile/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/yurug/stile/tree/main/kb"
 
 [project.scripts]
 stile = "stile.cli:main"

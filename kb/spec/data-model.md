@@ -3,7 +3,7 @@ id: spec-data-model
 type: spec
 summary: Hash format, path conventions, sidecar layout, and state.json schema.
 domain: spec
-last-updated: 2026-05-02
+last-updated: 2026-05-03
 depends-on: [glossary]
 refines: [prd]
 related: [spec-algorithms, spec-config-and-formats, external-posix-fs]

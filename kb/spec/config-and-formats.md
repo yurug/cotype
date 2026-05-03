@@ -3,7 +3,7 @@ id: spec-config-and-formats
 type: spec
 summary: On-disk file formats — state.json, conflict meta.json, base storage.
 domain: spec
-last-updated: 2026-05-02
+last-updated: 2026-05-03
 depends-on: [spec-data-model]
 refines: []
 related: [spec-algorithms]

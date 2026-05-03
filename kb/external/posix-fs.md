@@ -3,7 +3,7 @@ id: external-posix-fs
 type: external
 summary: POSIX filesystem primitives we depend on — atomic rename, fsync, flock semantics.
 domain: external
-last-updated: 2026-05-02
+last-updated: 2026-05-03
 depends-on: []
 refines: []
 related: [adr-0003, spec-algorithms, properties-functional]

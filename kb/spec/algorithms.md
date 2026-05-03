@@ -3,7 +3,7 @@ id: spec-algorithms
 type: spec
 summary: Step-by-step algorithm for every stile command, including the save state machine.
 domain: spec
-last-updated: 2026-05-02
+last-updated: 2026-05-03
 depends-on: [spec-data-model, spec-error-taxonomy]
 refines: [prd]
 related: [external-diff3, external-posix-fs, properties-functional]

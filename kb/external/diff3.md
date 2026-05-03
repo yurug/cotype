@@ -3,7 +3,7 @@ id: external-diff3
 type: external
 summary: Runtime behaviour of GNU/POSIX `diff3 -m` — exit codes, output format, edge cases.
 domain: external
-last-updated: 2026-05-02
+last-updated: 2026-05-03
 depends-on: []
 refines: []
 related: [adr-0002, spec-algorithms]

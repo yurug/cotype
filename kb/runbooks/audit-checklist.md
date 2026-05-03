@@ -3,7 +3,7 @@ id: runbook-audit-checklist
 type: procedure
 summary: Multi-axis quality audit checklist — security, performance, UX, spec compliance.
 domain: runbook
-last-updated: 2026-05-02
+last-updated: 2026-05-03
 depends-on: [properties-functional, spec-error-taxonomy]
 refines: []
 related: [conventions-testing-strategy]

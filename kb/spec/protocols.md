@@ -3,7 +3,7 @@ id: spec-protocols
 type: spec
 summary: Race-free caller protocols -- the exact open/save sequences a correct caller MUST follow.
 domain: spec
-last-updated: 2026-05-02
+last-updated: 2026-05-03
 depends-on: [spec-algorithms, spec-api-contracts]
 refines: []
 related: [properties-functional]

@@ -3,7 +3,7 @@ id: spec-index
 type: index
 summary: Routing table for the normative spec — pick the file matching your question.
 domain: spec
-last-updated: 2026-05-02
+last-updated: 2026-05-03
 depends-on: []
 refines: []
 related: [index]

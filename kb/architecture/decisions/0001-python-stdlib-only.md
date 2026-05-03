@@ -3,7 +3,7 @@ id: adr-0001
 type: decision
 summary: ADR-0001 — implement stile in Python 3.11+ using stdlib only; no third-party runtime deps.
 domain: architecture
-last-updated: 2026-05-02
+last-updated: 2026-05-03
 depends-on: []
 refines: []
 related: [architecture-overview, adr-0002]

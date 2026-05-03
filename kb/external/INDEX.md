@@ -3,7 +3,7 @@ id: external-index
 type: index
 summary: Routing for third-party / OS-level dependencies and their actual runtime behaviour.
 domain: external
-last-updated: 2026-05-02
+last-updated: 2026-05-03
 depends-on: []
 refines: []
 related: [index]

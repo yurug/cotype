@@ -3,7 +3,7 @@ id: glossary
 type: glossary
 summary: Canonical names for every domain term used across the stile KB.
 domain: meta
-last-updated: 2026-05-02
+last-updated: 2026-05-03
 depends-on: []
 refines: []
 related: [index, prd, spec-data-model]

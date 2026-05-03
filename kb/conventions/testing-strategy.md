@@ -3,7 +3,7 @@ id: conventions-testing-strategy
 type: procedure
 summary: Test levels, naming, fixtures, and the no-mocks-on-fs rule.
 domain: conventions
-last-updated: 2026-05-02
+last-updated: 2026-05-03
 depends-on: [properties-functional, properties-edge-cases]
 refines: []
 related: [conventions-code-style]

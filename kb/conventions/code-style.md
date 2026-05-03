@@ -3,7 +3,7 @@ id: conventions-code-style
 type: procedure
 summary: Code style — Python conventions, size limits, type hints, documentation rules.
 domain: conventions
-last-updated: 2026-05-02
+last-updated: 2026-05-03
 depends-on: []
 refines: []
 related: [conventions-error-handling, conventions-testing-strategy]

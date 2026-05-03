@@ -3,7 +3,7 @@ id: properties-index
 type: index
 summary: Routing for invariants — pick by category.
 domain: properties
-last-updated: 2026-05-02
+last-updated: 2026-05-03
 depends-on: []
 refines: []
 related: [index]

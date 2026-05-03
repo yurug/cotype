@@ -3,7 +3,7 @@ id: adr-0002
 type: decision
 summary: ADR-0002 — implement merge3 by invoking POSIX `diff3 -m` in subprocess, not by hand-rolling.
 domain: architecture
-last-updated: 2026-05-02
+last-updated: 2026-05-03
 depends-on: [adr-0001]
 refines: []
 related: [architecture-overview, external-diff3, properties-functional]

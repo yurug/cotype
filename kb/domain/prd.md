@@ -3,7 +3,7 @@ id: prd
 type: spec
 summary: Authoritative product requirements for stile v0 -- what it is, who uses it, what it must and must not do.
 domain: product
-last-updated: 2026-05-02
+last-updated: 2026-05-03
 depends-on: [glossary]
 refines: []
 related: [spec-algorithms, properties-functional]

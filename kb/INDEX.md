@@ -3,7 +3,7 @@ id: index
 type: index
 summary: Master routing for the stile KB — start here.
 domain: meta
-last-updated: 2026-05-02
+last-updated: 2026-05-03
 depends-on: []
 refines: []
 related: []
@@ -81,7 +81,7 @@ kb/
 
 ## File count & last updated
 
-26 KB files — Last updated: 2026-05-02
+26 KB files — Last updated: 2026-05-03
 
 ## Agent notes
 > If a quick-load bundle here disagrees with `indexes/by-task.md`, fix this file — the bundle table is the high-level shortcut; `by-task.md` is the canonical routing.

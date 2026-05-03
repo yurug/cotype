@@ -3,7 +3,7 @@ id: by-task
 type: index
 summary: Given a task type (implement, audit, debug, test), the ordered list of KB files to load.
 domain: meta
-last-updated: 2026-05-02
+last-updated: 2026-05-03
 depends-on: []
 refines: []
 related: [index]

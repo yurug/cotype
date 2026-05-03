@@ -3,7 +3,7 @@ id: architecture-overview
 type: concept
 summary: Module structure, dependency graph, and error hierarchy for the Python implementation.
 domain: architecture
-last-updated: 2026-05-02
+last-updated: 2026-05-03
 depends-on: [spec-algorithms, spec-error-taxonomy]
 refines: []
 related: [conventions-code-style, conventions-error-handling, adr-0001, adr-0002, adr-0003]

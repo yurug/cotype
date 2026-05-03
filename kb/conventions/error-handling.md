@@ -3,7 +3,7 @@ id: conventions-error-handling
 type: procedure
 summary: How to raise, propagate, and translate errors — exceptions to JSON envelope to exit code.
 domain: conventions
-last-updated: 2026-05-02
+last-updated: 2026-05-03
 depends-on: [spec-error-taxonomy]
 refines: []
 related: [conventions-code-style, architecture-overview]

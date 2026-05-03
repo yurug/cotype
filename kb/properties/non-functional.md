@@ -3,7 +3,7 @@ id: properties-non-functional
 type: constraint
 summary: NF1..NF6 — non-functional measurable criteria (perf, resource use, portability).
 domain: properties
-last-updated: 2026-05-02
+last-updated: 2026-05-03
 depends-on: [properties-functional]
 refines: []
 related: [properties-edge-cases]

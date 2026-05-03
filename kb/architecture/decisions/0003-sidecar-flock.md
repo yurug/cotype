@@ -3,7 +3,7 @@ id: adr-0003
 type: decision
 summary: ADR-0003 — serialise mutating commands with flock on `<sidecar>/lock`, not on FILE.
 domain: architecture
-last-updated: 2026-05-02
+last-updated: 2026-05-03
 depends-on: []
 refines: []
 related: [architecture-overview, external-posix-fs, properties-functional]

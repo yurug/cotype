@@ -3,7 +3,7 @@ id: properties-functional
 type: constraint
 summary: P1..P15 — functional invariants stile must always uphold, with violation examples.
 domain: properties
-last-updated: 2026-05-02
+last-updated: 2026-05-03
 depends-on: [spec-algorithms, spec-data-model]
 refines: []
 related: [properties-edge-cases, properties-non-functional]
