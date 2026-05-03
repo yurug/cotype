@@ -93,6 +93,43 @@ def test_cli_unknown_base_exits_4(tmp_path: Path):
     assert obj["error"] == "UnknownBase"
 
 
+def _make_pending_conflict(f: Path) -> str:
+    """Set up a file with one pending conflict via the CLI; return conflict_id."""
+    f.write_text("a\nb\nc\n")
+    run_cli(["init", str(f), "--json"])
+    rc, out, _ = run_cli(["open", str(f), "--json"])
+    base_sha = json.loads(out)["base_sha"]
+    f.write_text("a\nB-current\nc\n")
+    rc, out, _ = run_cli(
+        ["save", str(f), "--base-sha", base_sha, "--json"],
+        stdin=b"a\nB-proposed\nc\n",
+    )
+    assert rc == 1
+    return json.loads(out)["conflict_id"]
+
+
+def test_cli_resolve_use_merged_happy_path(tmp_path: Path):
+    f = tmp_path / "f.txt"
+    cid = _make_pending_conflict(f)
+    merged = tmp_path / ".f.txt.stile" / "conflicts" / cid / "merged"
+    merged.write_bytes(b"a\nresolved\nc\n")
+    rc, out, err = run_cli(["resolve", str(f), "--use-merged", "--json"])
+    assert rc == 0, err
+    assert json.loads(out)["status"] == "resolved"
+    assert f.read_bytes() == b"a\nresolved\nc\n"
+
+
+def test_cli_resolve_use_merged_refuses_with_markers(tmp_path: Path):
+    f = tmp_path / "f.txt"
+    _make_pending_conflict(f)
+    # Don't edit merged -- it still has diff3 markers.
+    rc, out, _err = run_cli(["resolve", str(f), "--use-merged", "--json"])
+    assert rc == 2  # UsageError exit code
+    obj = json.loads(out)
+    assert obj["error"] == "UsageError"
+    assert "conflict markers" in obj["message"]
+
+
 def test_cli_resolve_traversal_id_rejected(tmp_path: Path):
     f = tmp_path / "f.txt"
     f.write_text("x\ny\nz\n")

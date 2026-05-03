@@ -116,9 +116,13 @@ semantics. There is no privileged actor — every caller plays by the same rules
 
 Report whether the file is `unmanaged`, `clean`, or `conflicted`.
 
-### `stile resolve FILE --conflict-id ID [--actor ACTOR] [--json] < resolved`
+### `stile resolve FILE [--conflict-id ID | --use-merged] [--actor ACTOR] [--json]`
 
-Accept a tool/human-provided resolution; clears the pending conflict.
+Accept a resolution and clear the pending conflict. Two forms:
+
+- `--conflict-id ID < resolved` — explicit; bytes on stdin.
+- `--use-merged` — shortcut: read `<sidecar>/conflicts/<id>/merged` after
+  you've hand-edited it. Refuses if conflict markers are still present.
 
 ### `stile cat-base FILE [--base-sha HASH]`
 

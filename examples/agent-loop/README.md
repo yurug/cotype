@@ -99,10 +99,15 @@ ls .task.md.stile/conflicts/<id>/
 cat .task.md.stile/conflicts/<id>/merged   # has <<<<<<< / ======= / >>>>>>> markers
 ```
 
-Edit the merged file, then resolve:
+Edit the merged file in place to remove the conflict markers, then resolve
+with the shortcut:
 
 ```bash
-stile resolve task.md --conflict-id <id> < .task.md.stile/conflicts/<id>/merged
+$EDITOR .task.md.stile/conflicts/<id>/merged
+stile resolve task.md --use-merged
 ```
+
+(The explicit `--conflict-id <id> < bytes` form still works if you'd rather
+pipe the resolution from somewhere else.)
 
 After that, `run_agent.py` succeeds again.

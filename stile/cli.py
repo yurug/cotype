@@ -49,7 +49,19 @@ def build_parser() -> argparse.ArgumentParser:
         "resolve", help="resolve a pending conflict for FILE"
     )
     p_resolve.add_argument("file")
-    p_resolve.add_argument("--conflict-id", required=True)
+    p_resolve.add_argument(
+        "--conflict-id",
+        default=None,
+        help="explicit form: name the pending conflict; resolved bytes on stdin",
+    )
+    p_resolve.add_argument(
+        "--use-merged",
+        action="store_true",
+        help=(
+            "shortcut: read <sidecar>/conflicts/<id>/merged as the resolution "
+            "(after editing it to remove conflict markers)"
+        ),
+    )
     p_resolve.add_argument("--actor", default="unknown")
     p_resolve.add_argument("--json", action="store_true")
 
@@ -127,12 +139,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         elif args.command == "status":
             payload = cmd_status(args.file)
         elif args.command == "resolve":
-            payload = cmd_resolve(
-                args.file,
-                args.conflict_id,
-                args.actor,
-                sys.stdin.buffer.read(),
-            )
+            if args.use_merged:
+                payload = cmd_resolve(
+                    args.file,
+                    actor=args.actor,
+                    use_merged=True,
+                )
+            else:
+                payload = cmd_resolve(
+                    args.file,
+                    args.conflict_id,
+                    args.actor,
+                    sys.stdin.buffer.read(),
+                )
         elif args.command == "cat-base":
             # cat-base bypasses the JSON envelope: success is raw bytes to
             # stdout, errors take the normal stderr path (no --json flag).

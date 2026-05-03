@@ -95,12 +95,21 @@ Unmanaged:
 ```
 Exit: 0 in all three states. (`status` is reporting; not a failure.)
 
-## `stile resolve FILE --conflict-id ID [--actor ACTOR] [--json] < RESOLVED`
+## `stile resolve FILE [--conflict-id ID | --use-merged] [--actor ACTOR] [--json]`
+
+Two equivalent forms:
+
+- `--conflict-id ID < RESOLVED` — explicit. Caller names the pending conflict and pipes the resolved bytes on stdin.
+- `--use-merged` — shortcut. Reads `<sidecar>/conflicts/<id>/merged` (after the user has hand-edited it to remove diff3 markers) and uses those bytes as the resolution. The conflict id is taken from `state.pending_conflict.id`. Refuses with `UsageError` if a `<<<<<<< ` opener and a `>>>>>>> ` closer line are both present in the file (diff3 markers still in place).
+
+Forms are mutually exclusive — combining `--use-merged` with `--conflict-id` or stdin is a `UsageError`.
+
+Output (both forms):
 
 ```json
 { "status": "resolved", "file": "file.txt", "sha": "sha256:..." }
 ```
-Exit: 0 success · 2 usage (no pending conflict, id mismatch) · 3 corrupt/unmanaged · 6 io.
+Exit: 0 success · 2 usage (no pending conflict, id mismatch, markers still present, mutually-exclusive flags) · 3 corrupt/unmanaged/invalid-utf8 · 6 io.
 
 ## `stile cat-base FILE [--base-sha HASH]`
 
