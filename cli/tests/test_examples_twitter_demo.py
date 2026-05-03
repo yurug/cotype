@@ -224,12 +224,14 @@ def test_bg_claude_multi_round_section_based(tmp_path: Path):
         return False
 
     # Round 1: distinctive substrings from each round-0 canned body.
+    # Generous deadline because macOS CI runners can be 5-10x slower at
+    # subprocess-heavy work than the Linux ones.
     round1 = {
         "code":  "def sum_evens(xs):",
         "tests": "assert sum_evens([1, 2, 3, 4]) == 6",
         "docs":  "Empty input returns 0",
     }
-    assert _wait_for(round1, time.time() + 30.0), \
+    assert _wait_for(round1, time.time() + 60.0), \
         (work / "task.md").read_text()
 
     # Edit `## spec` directly (simulating the puppeteer's helper).
@@ -274,7 +276,7 @@ def test_bg_claude_multi_round_section_based(tmp_path: Path):
         "tests": 'except ValueError:',
         "docs":  'Raises `ValueError`',
     }
-    assert _wait_for(round2, time.time() + 30.0), \
+    assert _wait_for(round2, time.time() + 60.0), \
         (work / "task.md").read_text()
 
     final = (work / "task.md").read_text()
