@@ -56,6 +56,9 @@ The same machinery serves any "shared file" workflow — design docs, todo
 lists, generated artifacts a formatter rewrites while a human edits. The
 agent collaboration scenario is just the most direct demonstration.
 
+A runnable demo of this loop, with a deterministic offline mock agent and
+notes on wiring a real LLM, lives at [`examples/agent-loop/`](examples/agent-loop/).
+
 ## Install
 
 Requires **Python ≥3.11** and **POSIX `diff3`** (from `diffutils`).
