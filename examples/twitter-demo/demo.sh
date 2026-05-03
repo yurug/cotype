@@ -1,38 +1,36 @@
 #!/usr/bin/env bash
-# 15-second scripted demo: 1 user (Emacs) + 3 agents collaborating on
-# the same task.md via stile. Run live in your terminal to preview;
-# render to GIF/MP4 with `vhs demo.tape`.
+# Multi-pane tmux demo: live "editor view" of task.md on top, three
+# real agent processes at the bottom each running stile open / save in
+# parallel. Run live in your terminal to preview, or record with
+# `vhs demo.tape`.
 set -euo pipefail
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 WORK="${1:-/tmp/stile-twitter-demo}"
+SESSION="${STILE_DEMO_SESSION:-stile-tmux-demo}"
 
-# Idempotent setup: clean working dir + seeded task.md + sidecar.
+# tmux must be installed; stile must be on PATH.
+command -v tmux >/dev/null || { echo "tmux not on PATH" >&2; exit 2; }
+command -v stile >/dev/null || { echo "stile not on PATH (try: pip install -e cli/)" >&2; exit 2; }
+
+# Fresh slate: kill any prior session, re-seed the working dir.
+tmux kill-session -t "$SESSION" 2>/dev/null || true
 "$DIR/setup.sh" "$WORK" >/dev/null
-cd "$WORK"
 
-pause() { sleep "${1:-1.0}"; }
+# Top pane: live editor view of task.md, full width.
+tmux new-session -d -s "$SESSION" -c "$WORK" -x 180 -y 50 \
+    "exec bash '$DIR/bg-viewer.sh' task.md"
 
-clear
+# Bottom row, ~35% height, split into three equal-width agent panes.
+# split-window -p N takes N% from the *target* pane for the new pane.
+tmux split-window -t "$SESSION:0.0" -v  -p 35 -c "$WORK" \
+    "exec python3 '$DIR/bg-agent.py' reviewer"
+tmux split-window -t "$SESSION:0.1" -h  -p 67 -c "$WORK" \
+    "exec python3 '$DIR/bg-agent.py' linter"
+tmux split-window -t "$SESSION:0.2" -h  -p 50 -c "$WORK" \
+    "exec python3 '$DIR/bg-agent.py' tester"
 
-echo '$ cat task.md'
-cat task.md
-pause 2.0
+# Cosmetic: drop the status bar so the recording is uncluttered.
+tmux set-option -t "$SESSION" status off
 
-echo
-echo '# 3 agents capture the SAME base, edit disjoint sections, save'
-pause 1.0
-
-# orchestrate.py prints one line per agent: "agent:role  save: <mode>"
-# Expect: direct, merged, merged -- the "concurrent edits, no losses" story.
-python3 "$DIR/orchestrate.py" task.md
-pause 1.5
-
-echo
-echo '$ cat task.md'
-cat task.md
-pause 4.0
-
-echo
-echo '# four writers, no lost edits, file always consistent.'
-pause 1.5
+tmux attach-session -t "$SESSION"

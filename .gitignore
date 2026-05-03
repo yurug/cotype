@@ -36,3 +36,8 @@ gh_token
 
 # Claude Code session state (local only)
 .claude/
+
+# Generated demo artefacts (rendered locally with vhs / asciinema)
+examples/twitter-demo/*.gif
+examples/twitter-demo/*.mp4
+examples/twitter-demo/*.cast
