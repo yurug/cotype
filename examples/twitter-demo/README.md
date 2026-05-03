@@ -15,24 +15,27 @@ presentation differs.
 
 ## What the multi-pane demo shows
 
+The top pane is a **real Emacs** running our `stile-mode` (the same
+integration shipped at `editors/emacs/`). The three bottom panes are
+**real processes** running `stile open` and `stile save` against the
+same `task.md`. As they save, Emacs's auto-revert reloads the buffer
+and the user sees the file grow section by section.
+
 ```
 +-----------------------------------------------+
 |                                               |
-|  ─── task.md ─── (your editor)                |
+|   GNU Emacs (-Q + demo-init.el; stile-mode)   |
 |                                               |
-|  # Refactor src/auth.py                       |
-|  ## user                                      |
-|  What's brittle here?                         |
-|  ## agent:reviewer                            |
-|  Three concerns:                              |
-|    ...                                        |
-|  ## agent:linter                              |
-|  12 findings (3 must-fix):                    |
-|    ...                                        |
-|  ## agent:tester                              |
-|  Coverage gaps:                               |
-|    ...                                        |
-|                                               |
+|   # Refactor src/auth.py                      |
+|   ## user                                     |
+|   What's brittle here?                        |
+|   ## agent:reviewer                           |
+|     Three concerns: ...                       |
+|   ## agent:linter                             |
+|     12 findings (3 must-fix): ...             |
+|   ## agent:tester                             |
+|     Coverage gaps: ...                        |
+|   --- mode-line --- All L1 (Markdown stile)   |
 +--------------+--------------+-----------------+
 | agent:reviewer | agent:linter | agent:tester  |
 | ─────────────  | ────────────  | ────────────  |
@@ -41,16 +44,41 @@ presentation differs.
 +--------------+--------------+-----------------+
 ```
 
-Three real processes each run `stile open` (capturing the same base),
-synchronize at a barrier so they all hold an identical `base_sha`,
-then save with a small post-barrier jitter. The first save lands
-`direct`. The next two see a now-stale base + non-overlapping diffs, so
-`stile` invokes POSIX `diff3 -m` and 3-way merges them. The top pane
-re-renders on every change, so the viewer sees the file fill in section
-by section.
+Sequence:
 
-This is the headline value-prop visualised: **multiple writers, no
-overwrites, no lost work**.
+1. The four panes appear. Agents print their headers and then sleep a
+   short `START_DELAY` (default 2 s) so Emacs has time to start up.
+2. Emacs finishes loading: `-Q -l demo-init.el task.md`. The init
+   loads `editors/emacs/stile.el` and adds `stile-maybe-enable` to
+   `find-file-hook`, so opening `task.md` (which has a sidecar from
+   `setup.sh`) immediately enables `stile-mode` in the buffer.
+3. The three agent processes wake up, each call `stile open` and
+   capture the same `base_sha`, then synchronise at a barrier so they
+   all hold an identical view.
+4. Post-barrier jitter (0.0 / 0.4 / 0.8 s) cascades the saves: reviewer
+   wins `direct`; linter and tester see the now-stale base + disjoint
+   diffs and `stile` invokes `diff3 -m` to merge them.
+5. After each save, the file's mtime changes; Emacs's auto-revert (via
+   file-notify) reloads the buffer; `stile-mode`'s `after-revert-hook`
+   re-captures the current base. The user sees the section appear
+   *inside* Emacs.
+
+This is the headline value-prop made visible end-to-end: **multiple
+writers, no overwrites, no lost work — and the user's editor stays
+coherent the whole time**.
+
+## Requirements
+
+| What | Why |
+|---|---|
+| `tmux` | 4-pane layout |
+| `stile` on `PATH` | the actual save protocol (install via `pip install -e cli/`) |
+| POSIX `diff3` | 3-way merge engine |
+| `emacs` (≥ 27.1) | top-pane viewer; auto-revert + stile-mode |
+
+If `emacs` is absent, `demo.sh` falls back to `bg-viewer.sh` (a plain
+`cat` loop) so the demo still runs — but the recording is much less
+compelling without the real editor in frame.
 
 ## Run live (no recording)
 

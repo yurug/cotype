@@ -21,22 +21,27 @@ Set TypingSpeed 30ms
 Set Padding 10
 
 # === Off-screen ===
-# Launch the demo: this kills any prior session, re-seeds /tmp/stile-twitter-demo,
-# starts the 4-pane tmux layout, attaches.  Each agent shows "open  (base ...)"
-# very quickly, then waits at a barrier until all three have captured the same
-# base, then saves with a small jitter so the cascade is visible.
+# Launch the demo: kills any prior session, re-seeds /tmp/stile-twitter-demo,
+# creates the 4-pane tmux layout, sends Emacs to the top pane, sends the
+# three agent processes to the bottom panes (each with a 2 s pre-open
+# delay so Emacs has time to come up first), and attaches.
 Hide
 Type "./demo.sh"
 Enter
 Sleep 2500ms
 Show
 
-# === Visible: real concurrent agents save into the same file ===
-# Phase: opens land (~0.5s), barrier passes, saves cascade.
-Sleep 5000ms
+# === Visible from here ===
+# Emacs finishes its startup (-Q + our demo-init.el), opens task.md,
+# auto-enables stile-mode, captures its base. ~1 s.
+# Then the three agents wake from their START_DELAY and the cascade
+# fires: reviewer direct, linter merged, tester merged. Emacs's
+# auto-revert (file-notify) reloads the buffer after each save, so the
+# top pane visibly grows section by section.
+Sleep 6500ms
 
-# Linger on the final state so the four populated sections register.
-Sleep 5000ms
+# Linger on the final populated buffer.
+Sleep 4000ms
 
 # === Off-screen cleanup: detach from tmux + kill the session ===
 Hide

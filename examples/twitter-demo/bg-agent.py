@@ -13,6 +13,7 @@ Usage: bg-agent.py <reviewer|linter|tester>
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import time
@@ -43,6 +44,12 @@ BODIES = {
 BARRIER_DIR = Path.cwd() / ".stile-demo-barrier"
 N_AGENTS = 3
 
+# Pre-open delay so the Emacs viewer pane has time to start up and
+# enable stile-mode BEFORE agents start saving (otherwise the cascade
+# would happen before Emacs finishes loading and the viewer would attach
+# to an already-populated file). Override to 0 in tests via env var.
+START_DELAY = float(os.environ.get("STILE_DEMO_START_DELAY", "2.0"))
+
 # Post-barrier jitter so the three saves cascade visibly in the recording.
 SAVE_JITTER = {"reviewer": 0.0, "linter": 0.4, "tester": 0.8}
 
@@ -68,6 +75,9 @@ def main() -> int:
 
     print(f"agent:{role}")
     print("─" * 18, flush=True)
+
+    if START_DELAY > 0:
+        time.sleep(START_DELAY)
 
     try:
         # Phase 1 -- everyone captures a base.

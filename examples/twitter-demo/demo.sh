@@ -41,12 +41,21 @@ agent_b=$(tmux split-window -h -t "$agent_a" -l 120 -c "$WORK" \
 agent_c=$(tmux split-window -h -t "$agent_b" -l 60  -c "$WORK" \
     -P -F "#{pane_id}")
 
+# Pick the viewer: real Emacs running `stile-mode' if available (matches
+# what the project actually ships), else the plain `bg-viewer.sh' loop.
+if command -v emacs >/dev/null 2>&1; then
+    VIEWER_CMD="exec emacs -nw -Q -l '$DIR/demo-init.el' task.md"
+else
+    echo "note: emacs not found on PATH; falling back to bg-viewer.sh" >&2
+    VIEWER_CMD="exec '$DIR/bg-viewer.sh' task.md"
+fi
+
 # Wire commands. The inline env (ZDOTDIR/BASH_ENV/ENV) belongs to the
 # `exec`-spawned process, not the outer shell that already sourced rc;
 # it shouldn't matter for our scripts but is cheap insurance.
 ENV_PREFIX='ZDOTDIR=/dev/null BASH_ENV= ENV='
 tmux send-keys -t "$viewer" \
-    "clear; $ENV_PREFIX exec '$DIR/bg-viewer.sh' task.md" Enter
+    "clear; $ENV_PREFIX $VIEWER_CMD" Enter
 tmux send-keys -t "$agent_a" \
     "clear; $ENV_PREFIX exec python3 '$DIR/bg-agent.py' reviewer" Enter
 tmux send-keys -t "$agent_b" \

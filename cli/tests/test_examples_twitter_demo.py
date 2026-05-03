@@ -6,6 +6,7 @@ save`'s branching can't silently break the advertised story.
 """
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 import time
@@ -85,17 +86,22 @@ def test_bg_agent_concurrent_yields_direct_then_two_merged(tmp_path: Path):
     terminating tester before its 0.8 s jitter + save subprocess have
     completed on a slow CI runner.
     """
-    import fcntl, os
+    import fcntl
 
     work = tmp_path / "work"
     subprocess.run([str(SETUP), str(work)], capture_output=True, check=True)
 
     procs = []
     buffers: dict[str, bytes] = {}
+    # bg-agent.py defaults to a 2 s pre-open delay so the Emacs viewer
+    # pane has time to come up before the cascade. The test doesn't need
+    # that wait -- skip it.
+    env = {**os.environ, "STILE_DEMO_START_DELAY": "0"}
     for role in ("reviewer", "linter", "tester"):
         p = subprocess.Popen(
             [sys.executable, str(BG_AGENT), role],
             cwd=str(work),
+            env=env,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
