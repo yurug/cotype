@@ -1,0 +1,40 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: pytest (${{ matrix.os }}, py${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      # diffutils ships diff3. Linux runners already have it; macOS runners
+      # have BSD diff3 at /usr/bin/diff3 which supports the POSIX -m flag.
+      # The step below verifies presence and fails fast on any future surprise.
+      - name: Verify diff3 is available
+        run: |
+          which diff3
+          diff3 --version 2>&1 | head -1 || diff3 --help 2>&1 | head -1
+
+      - name: Install package and pytest
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . pytest
+
+      - name: Run tests
+        run: pytest -q

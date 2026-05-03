@@ -1,5 +1,7 @@
 # stile
 
+[![tests](https://github.com/yurug/stile/actions/workflows/test.yml/badge.svg)](https://github.com/yurug/stile/actions/workflows/test.yml)
+
 > A shared text file as the medium between you and your agents — kept consistent.
 
 `stile` is a small CLI that lets a user and one or more AI agents (or any other
