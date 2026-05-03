@@ -10,6 +10,7 @@ import sys
 from typing import Optional, Sequence
 
 from stile import __version__
+from stile.commands.catbase import cmd_catbase
 from stile.commands.init import cmd_init
 from stile.commands.open_ import cmd_open
 from stile.commands.resolve import cmd_resolve
@@ -51,6 +52,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_resolve.add_argument("--conflict-id", required=True)
     p_resolve.add_argument("--actor", default="unknown")
     p_resolve.add_argument("--json", action="store_true")
+
+    # cat-base writes raw bytes; no --json flag (would mix with stdout body).
+    p_catbase = sub.add_parser(
+        "cat-base",
+        help="write a base snapshot's bytes to stdout (defaults to last known)",
+    )
+    p_catbase.add_argument("file")
+    p_catbase.add_argument("--base-sha", default=None)
 
     return p
 
@@ -124,6 +133,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 args.actor,
                 sys.stdin.buffer.read(),
             )
+        elif args.command == "cat-base":
+            # cat-base bypasses the JSON envelope: success is raw bytes to
+            # stdout, errors take the normal stderr path (no --json flag).
+            sys.stdout.buffer.write(cmd_catbase(args.file, args.base_sha))
+            return 0
         else:  # pragma: no cover -- argparse already enforces required=True
             raise UsageError(f"unknown command: {args.command}")
         emit_success(payload, json_mode=json_mode)

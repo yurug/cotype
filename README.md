@@ -115,6 +115,16 @@ Report whether the file is `unmanaged`, `clean`, or `conflicted`.
 
 Accept a tool/human-provided resolution; clears the pending conflict.
 
+### `stile cat-base FILE [--base-sha HASH]`
+
+Write a base snapshot's bytes to stdout. With no `--base-sha`, returns the
+most recently captured base (`state.last_known_sha`). Useful in agent
+pipelines that need the "current base" content without re-running `open`.
+
+```bash
+stile cat-base task.md | my-agent | stile save task.md --base-sha "$sha"
+```
+
 ## Caller protocols
 
 ### Editor

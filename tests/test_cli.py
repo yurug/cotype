@@ -59,6 +59,26 @@ def test_cli_save_direct_via_subprocess(tmp_path: Path):
     assert f.read_text() == "B\n"
 
 
+def test_cli_catbase_writes_bytes_to_stdout(tmp_path: Path):
+    f = tmp_path / "f.txt"
+    f.write_bytes(b"raw bytes here\n")
+    run_cli(["init", str(f), "--json"])
+    rc, out, err = run_cli(["cat-base", str(f)])
+    assert rc == 0, err
+    assert out == b"raw bytes here\n"
+
+
+def test_cli_catbase_unknown_base_exits_4(tmp_path: Path):
+    f = tmp_path / "f.txt"
+    f.write_text("x\n")
+    run_cli(["init", str(f), "--json"])
+    rc, _out, err = run_cli(
+        ["cat-base", str(f), "--base-sha", "sha256:" + "0" * 64]
+    )
+    assert rc == 4
+    assert b"UnknownBase" in err
+
+
 def test_cli_unknown_base_exits_4(tmp_path: Path):
     f = tmp_path / "f.txt"
     f.write_text("A\n")

@@ -102,6 +102,27 @@ Exit: 0 in all three states. (`status` is reporting; not a failure.)
 ```
 Exit: 0 success · 2 usage (no pending conflict, id mismatch) · 3 corrupt/unmanaged · 6 io.
 
+## `stile cat-base FILE [--base-sha HASH]`
+
+Read-only utility: writes the bytes of a base snapshot to stdout. With no
+`--base-sha`, uses `state.last_known_sha` (the most recently captured base).
+
+Output: raw bytes of the requested base, on stdout. **No JSON envelope on
+success** — this command intentionally does not accept `--json`, because
+mixing JSON metadata with the bytes payload on the same stream would be
+unparseable. Errors go to stderr in the standard `error: <Name>: <message>`
+form, exit code per the table below.
+
+Exit: 0 success · 3 unmanaged · 4 unknown base · 6 io.
+
+Typical use (agent shell pipeline):
+```bash
+meta=$(stile open task.md --json)
+sha=$(printf '%s' "$meta" | jq -r .base_sha)
+stile cat-base task.md --base-sha "$sha" | my-agent | \
+  stile save task.md --base-sha "$sha" --actor agent:reviewer
+```
+
 ## Error envelope
 
 Every error in `--json` mode emits to **stdout**:
