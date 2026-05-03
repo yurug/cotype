@@ -248,6 +248,19 @@ def call_claude(role: str, content: str) -> str:
     return r.stdout.strip()
 
 
+def _spec_bullet_count(content: str) -> int:
+    """Count `- ` bullet lines in the `## spec` section.
+
+    The user drives the cascade by adding bullets here; counting them
+    gives a deterministic, race-free notion of "which round we're in":
+    1 bullet = round 0, 2 = round 1, 3 = round 2. If a downstream agent
+    is woken late and sees `## code` already at round-2, it still
+    produces its round-2 body because the spec count says so.
+    """
+    spec = section_body(content, "spec")
+    return sum(1 for ln in spec.splitlines() if ln.lstrip().startswith("- "))
+
+
 def get_response(role: str, content: str, round_idx: int) -> str:
     use_fake = USE_FAKE or not shutil.which("claude")
     if not use_fake:
@@ -256,7 +269,12 @@ def get_response(role: str, content: str, round_idx: int) -> str:
         except Exception as e:
             print(f"  ✗ claude failed: {e}; using fake", flush=True)
     bodies = FAKE_BODIES[role]
-    return bodies[min(round_idx, len(bodies) - 1)]
+    # In fake mode, derive the round index from the doc's CURRENT state
+    # (spec bullet count) rather than from the agent's own iteration
+    # counter. This is robust to races where a downstream agent wakes
+    # late and never sees an intermediate state of its dependency.
+    state_round = max(0, _spec_bullet_count(content) - 1)
+    return bodies[min(state_round, len(bodies) - 1)]
 
 
 # -- main loop --------------------------------------------------------------
