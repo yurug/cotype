@@ -95,10 +95,31 @@ The integration mirrors `kb/spec/protocols.md`:
   which calls `stile resolve --use-merged` and reverts the original
   buffer.
 
+## How concurrent writes appear in your buffer
+
+When another actor (an AI agent, a formatter, a teammate via SSH) writes
+the file through `stile`, Emacs would normally pop "task.md changed on
+disk; really edit buffer?" the next time you type. That breaks the
+illusion of a shared workspace. Instead, `stile-mode` enables
+`auto-revert-mode` in the same buffer (controllable via the
+`stile-auto-revert` defcustom, default `t`):
+
+- The buffer reloads silently when the file changes on disk.
+- Right after each revert, `stile-mode` re-runs `stile open` so the
+  buffer-local `base_sha` matches the new on-disk state — your next
+  save uses the right base.
+- If the buffer has unsaved edits, auto-revert won't silently revert; it
+  will warn, and you keep your work.
+
+If you've configured auto-revert globally already, `stile-mode` won't
+toggle it off when you leave the mode. Set `stile-auto-revert` to `nil`
+if you want to drive it yourself.
+
 ## Known limitations (v0)
 
 - No automated tests.
 - No transient/keymap UI; conflict resolution is `M-x stile-resolve-use-merged`.
-- Auto-revert and other modes that write to the file behind Emacs' back
-  are not coordinated — they should be disabled in stile-mode buffers.
+- Auto-save (`#filename#` files) writes outside `write-contents-functions`;
+  consider `(setq auto-save-default nil)` in stile-mode buffers if it
+  bothers you. Auto-revert is now coordinated automatically (see above).
 - Tramp / remote files: untested. The CLI invocation is local-only.

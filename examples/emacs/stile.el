@@ -50,8 +50,23 @@
   "Default --actor label sent on `stile save'."
   :type 'string :group 'stile)
 
+(defcustom stile-auto-revert t
+  "If non-nil, `stile-mode' turns on `auto-revert-mode' in its buffers.
+
+When another actor (an agent, a formatter) writes the file via stile,
+auto-revert reloads the buffer silently instead of Emacs nagging
+\"task.md changed on disk; really edit buffer?\".  After each revert,
+`stile-mode' also re-runs `stile open' so the buffer-local `base_sha'
+matches what is now on disk."
+  :type 'boolean :group 'stile)
+
 (defvar-local stile--base-sha nil
   "Buffer-local base_sha returned by the most recent `stile open'.")
+
+(defvar-local stile--enabled-auto-revert nil
+  "Non-nil if `stile-mode' enabled `auto-revert-mode' here itself.
+We track this so that disabling `stile-mode' only undoes the
+auto-revert state we set up, not a user's pre-existing setting.")
 
 
 ;; -- low-level subprocess helpers -------------------------------------------
@@ -109,6 +124,16 @@ stile open FILE)."
     (goto-char (min pos (point-max)))
     (set-buffer-modified-p nil)
     (set-visited-file-modtime)))
+
+(defun stile--refresh-base-sha ()
+  "Re-run `stile open' to refresh `stile--base-sha' WITHOUT touching the buffer.
+Hook target for `after-revert-hook': auto-revert has just reloaded the
+buffer from disk, so we just need a fresh base_sha for subsequent saves."
+  (when (and stile-mode (buffer-file-name))
+    (let* ((resp (stile--call-json "open" (buffer-file-name) "--json"))
+           (data (cdr resp)))
+      (when data
+        (setq stile--base-sha (plist-get data :base_sha))))))
 
 (defun stile--open-current-buffer ()
   "Run `stile open' on the buffer's file and reload from base_path.
@@ -259,10 +284,22 @@ Conflicts open the merged file in another window; resolve with
      (t
       (add-hook 'write-contents-functions
                 #'stile--save-via-stile nil 'local)
+      ;; Co-edit hygiene: agents writing the file should appear in the
+      ;; buffer automatically, not as a "changed on disk" prompt.  The
+      ;; after-revert-hook keeps stile--base-sha in step with disk.
+      (when (and stile-auto-revert
+                 (not (bound-and-true-p auto-revert-mode)))
+        (auto-revert-mode 1)
+        (setq stile--enabled-auto-revert t))
+      (add-hook 'after-revert-hook #'stile--refresh-base-sha nil 'local)
       (stile--open-current-buffer))))
    (t
     (remove-hook 'write-contents-functions
                  #'stile--save-via-stile 'local)
+    (remove-hook 'after-revert-hook #'stile--refresh-base-sha 'local)
+    (when stile--enabled-auto-revert
+      (auto-revert-mode -1)
+      (setq stile--enabled-auto-revert nil))
     (kill-local-variable 'stile--base-sha))))
 
 ;;;###autoload

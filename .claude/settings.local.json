@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(stile status *)",
+      "Bash(stile open *)",
+      "Bash(cat)",
+      "Bash(stile save *)"
+    ]
+  }
+}
