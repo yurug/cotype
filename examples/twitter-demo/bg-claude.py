@@ -192,7 +192,16 @@ def replace_section_body(content: str, target: str, new_body: str) -> str:
         if name == target:
             sections[i] = (name, canonical)
             break
-    return render_doc(preamble, sections)
+    rendered = render_doc(preamble, sections)
+    # Paranoid invariant: rendered output must contain every section we
+    # parsed -- a future parse bug must NEVER silently lose a section.
+    _, rendered_sections = parse_sections(rendered)
+    assert {n for n, _ in rendered_sections} == {n for n, _ in sections}, (
+        f"replace_section_body dropped sections: "
+        f"input={[n for n, _ in sections]} "
+        f"output={[n for n, _ in rendered_sections]}"
+    )
+    return rendered
 
 
 def section_body(content: str, name: str) -> str:
