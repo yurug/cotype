@@ -16,43 +16,53 @@ Small Python package, layered: pure helpers → IO primitives → store → comm
 
 ## Module map
 
+The CLI lives under `cli/` in the monorepo. Paths below are relative to that
+directory.
+
 ```
-stile/
-  __init__.py           # version constant
-  __main__.py           # python -m stile -> cli.main()
-  cli.py                # argparse wiring + dispatch + JSON envelope
-  errors.py             # StileError hierarchy + name <-> exit-code table
-  hash.py               # H(b) -> "sha256:<hex>"; helpers to split/validate
-  paths.py              # FILE -> sidecar paths; relative-path helpers; sidecar validation
-  lock.py               # contextmanager: flock(LOCK_EX) on <sidecar>/lock
-  atomic_write.py       # atomic_replace(target, bytes) per algorithms.md
-  store.py              # state.json read/write; store_base; create_conflict_dir
-  merge.py              # merge3(base, current, proposed) -> Clean|Conflict|ToolError
-  commands/
-    __init__.py
-    init.py             # cmd_init(args) -> dict
-    open_.py            # cmd_open(args)
-    save.py             # cmd_save(args)
-    status.py           # cmd_status(args)
-    resolve.py          # cmd_resolve(args)
-tests/
-  conftest.py
-  test_hash.py
-  test_paths.py
-  test_atomic_write.py
-  test_store.py
-  test_merge.py
-  test_init.py
-  test_open.py
-  test_save.py
-  test_save_merge.py
-  test_save_conflict.py
-  test_status.py
-  test_resolve.py
-  test_T10_atomicity.py     # threaded smoke test
-  test_security.py          # actor injection, path traversal, etc.
-pyproject.toml
-README.md
+cli/
+  pyproject.toml
+  README.md
+  stile/
+    __init__.py           # version constant
+    __main__.py           # python -m stile -> cli.main()
+    cli.py                # argparse wiring + dispatch + JSON envelope
+    errors.py             # StileError hierarchy + name <-> exit-code table
+    hash.py               # H(b) -> "sha256:<hex>"; helpers to split/validate
+    paths.py              # FILE -> sidecar paths; relative-path helpers; sidecar validation
+    lock.py               # contextmanager: flock(LOCK_EX) on <sidecar>/lock
+    atomic_write.py       # atomic_replace(target, bytes) per algorithms.md
+    store.py              # state.json read/write; store_base; create_conflict_dir
+    merge.py              # merge3(base, current, proposed) -> Clean|Conflict|ToolError
+    commands/
+      __init__.py
+      init.py             # cmd_init(args) -> dict
+      open_.py            # cmd_open(args)
+      save.py             # cmd_save(args)
+      status.py           # cmd_status(args)
+      resolve.py          # cmd_resolve(args)
+      catbase.py          # cmd_catbase(args)
+  tests/
+    conftest.py
+    test_hash.py
+    test_paths.py
+    test_atomic_write.py
+    test_lock.py
+    test_store.py
+    test_merge.py
+    test_init.py
+    test_open.py
+    test_save.py
+    test_save_merge.py
+    test_save_conflict.py
+    test_status.py
+    test_resolve.py
+    test_catbase.py
+    test_properties.py        # cross-cutting property tests
+    test_security.py          # actor injection, path traversal, etc.
+    test_T10_atomicity.py     # threaded smoke test
+    test_cli.py               # end-to-end via subprocess
+    test_examples_agent_loop.py  # validates the headline scenario
 ```
 
 ## Dependency graph

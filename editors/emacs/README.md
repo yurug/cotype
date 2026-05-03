@@ -1,16 +1,17 @@
-# examples/emacs
+# editors/emacs
 
 A minor mode (`stile-mode`) that routes Emacs saves through the `stile`
 CLI, so a file can be edited concurrently by you, AI agents, and other
 processes without lost updates.
 
-This is a starter integration, not a v0 commitment — PRD §5 puts editor
-plugins out of v0 scope. Use it, fork it, or replace it.
+This is the canonical Emacs integration in the stile monorepo. It is
+self-contained: the only prerequisite from the rest of the repo is a
+working `stile` on `PATH`, installed from `cli/`.
 
 ## Requirements
 
 - Emacs ≥ 27.1 (built-in `json-parse-buffer`)
-- `stile` on `PATH` (`pip install -e .` from the repo root)
+- `stile` on `PATH` (`pip install -e cli/` from the monorepo root)
 - POSIX `diff3` (from `diffutils`)
 
 ## Install
@@ -18,7 +19,7 @@ plugins out of v0 scope. Use it, fork it, or replace it.
 Drop `stile.el` somewhere on `load-path` and require it:
 
 ```elisp
-(add-to-list 'load-path "~/path/to/stile/examples/emacs")
+(add-to-list 'load-path "~/path/to/stile/editors/emacs")
 (require 'stile)
 
 ;; Optional: auto-enable stile-mode in any buffer whose file has
@@ -66,7 +67,7 @@ mkdir -p /tmp/stile-emacs && cd /tmp/stile-emacs
 echo "hello" > note.txt
 stile init note.txt --json
 
-emacs -Q -l ~/path/to/stile/examples/emacs/stile.el note.txt
+emacs -Q -l ~/path/to/stile/editors/emacs/stile.el note.txt
 ```
 
 In Emacs:

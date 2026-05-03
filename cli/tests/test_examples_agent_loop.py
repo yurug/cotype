@@ -11,7 +11,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parent.parent
+# Test lives at <repo>/cli/tests/...; examples/ is at the monorepo root,
+# three levels up from this file (parent x3).
+REPO = Path(__file__).resolve().parent.parent.parent
 DRIVER = REPO / "examples" / "agent-loop" / "run_agent.py"
 MOCK = REPO / "examples" / "agent-loop" / "agent_mock.py"
 

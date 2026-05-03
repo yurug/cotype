@@ -45,7 +45,7 @@ def main() -> int:
     args = p.parse_args()
 
     if not shutil.which("stile"):
-        sys.stderr.write("error: stile not on PATH (try: pip install -e .)\n")
+        sys.stderr.write("error: stile not on PATH (try: pip install -e cli/)\n")
         return 2
 
     # Auto-init the sidecar if absent so the script is idempotent.

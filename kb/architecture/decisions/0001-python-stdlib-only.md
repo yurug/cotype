@@ -34,7 +34,7 @@ Test-time dependency: `pytest` (dev only).
 ## Consequences
 
 Positive:
-- Zero build step. `pip install -e .` or even `python -m stile` from a clone.
+- Zero build step. `pip install -e cli/` or even `python -m stile` from a clone.
 - All behaviour is auditable in plain Python.
 - stdlib provides every primitive we need (`hashlib`, `fcntl.flock`, `os.replace`, `os.fsync`, `tempfile`, `json`, `argparse`, `subprocess`, `uuid`, `shutil`).
 - Trivial portability across Linux/macOS.

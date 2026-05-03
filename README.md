@@ -52,54 +52,46 @@ in parallel. Disjoint sections → `stile` auto-merges. Same section, both
 sides → `stile` conflicts and dumps the three versions for the user to settle.
 No actor ever silently overwrites another.
 
-The same machinery serves any "shared file" workflow — design docs, todo
-lists, generated artifacts a formatter rewrites while a human edits. The
-agent collaboration scenario is just the most direct demonstration.
+## Repository layout
 
-A runnable demo of this loop, with a deterministic offline mock agent and
-notes on wiring a real LLM, lives at [`examples/agent-loop/`](examples/agent-loop/).
-For Emacs users, a minor mode that routes `C-x C-s` through `stile` is at
-[`examples/emacs/`](examples/emacs/).
+This is a small monorepo: the CLI lives next to one self-contained folder per
+editor mode. Each folder has its own README; the knowledge base at `kb/` is
+shared by all of them.
 
-## Install
+| Path | What lives there |
+|---|---|
+| [`cli/`](cli/) | The Python CLI implementation. `pip install -e cli/` to build. |
+| [`editors/emacs/`](editors/emacs/) | `stile-mode` minor mode for Emacs ≥ 27.1. |
+| [`examples/agent-loop/`](examples/agent-loop/) | Offline-runnable demo of the user-and-agents protocol. |
+| [`kb/`](kb/) | Agent-optimised knowledge base: PRD, normative spec, properties, ADRs, audit checklist. |
 
-Requires **Python ≥3.11** and **POSIX `diff3`** (from `diffutils`).
+Future editor modes will land as siblings under `editors/` (`vim`, `vscode`, …).
+
+## Install the CLI
+
+Requires **Python ≥ 3.11** and **POSIX `diff3`** (from `diffutils`).
 
 ```bash
-# from a clone
-pip install -e .
+git clone https://github.com/yurug/stile.git
+cd stile
+pip install -e cli/
 
 # verify
 stile --help
 ```
 
-## Commands
+## CLI surface (in one screen)
 
-### `stile init FILE [--json]`
-
-Initialise the sidecar directory `.<basename>.stile/` next to FILE and store the
-current contents as the first base snapshot.
-
-### `stile open FILE [--json]`
-
-Capture a fresh base snapshot. Returns `base_sha` and `base_path` — every safe
-caller (human, agent, process) loads its working copy from `base_path`, not by
-re-reading FILE.
-
-```bash
-$ stile open task.md --json
-{
-  "status": "ok",
-  "file": "/path/to/task.md",
-  "base_sha": "sha256:...",
-  "base_path": ".task.md.stile/bases/...",
-  "conflicted": false
-}
+```text
+stile init     FILE [--json]
+stile open     FILE [--json]
+stile save     FILE --base-sha HASH [--actor ACTOR] [--json] < proposed
+stile status   FILE [--json]
+stile resolve  FILE [--conflict-id ID | --use-merged] [--actor ACTOR] [--json]
+stile cat-base FILE [--base-sha HASH]
 ```
 
-### `stile save FILE --base-sha HASH [--actor ACTOR] [--json] < proposed`
-
-Submit candidate content. Outcomes:
+`save` outcomes:
 
 | `mode`   | meaning                                                       |
 |----------|---------------------------------------------------------------|
@@ -107,34 +99,13 @@ Submit candidate content. Outcomes:
 | `merged` | 3-way merge produced a clean result; merged content written   |
 | `noop`   | proposed equals current; nothing to do                        |
 
-A conflict yields `status: "conflict"`, exit code `1`, and a forensic dump under
-`.<basename>.stile/conflicts/<id>/`.
+A conflict yields `status: "conflict"`, exit code `1`, and a forensic dump
+under `.<basename>.stile/conflicts/<id>/`. Resolve by hand-editing
+`merged` and running `stile resolve --use-merged`.
 
 `--actor` is a free-form label (e.g. `emacs`, `agent:reviewer`,
 `agent:formatter`, `me`). Stored in the conflict metadata; never affects
 semantics. There is no privileged actor — every caller plays by the same rules.
-
-### `stile status FILE [--json]`
-
-Report whether the file is `unmanaged`, `clean`, or `conflicted`.
-
-### `stile resolve FILE [--conflict-id ID | --use-merged] [--actor ACTOR] [--json]`
-
-Accept a resolution and clear the pending conflict. Two forms:
-
-- `--conflict-id ID < resolved` — explicit; bytes on stdin.
-- `--use-merged` — shortcut: read `<sidecar>/conflicts/<id>/merged` after
-  you've hand-edited it. Refuses if conflict markers are still present.
-
-### `stile cat-base FILE [--base-sha HASH]`
-
-Write a base snapshot's bytes to stdout. With no `--base-sha`, returns the
-most recently captured base (`state.last_known_sha`). Useful in agent
-pipelines that need the "current base" content without re-running `open`.
-
-```bash
-stile cat-base task.md | my-agent | stile save task.md --base-sha "$sha"
-```
 
 ## Caller protocols
 
@@ -165,9 +136,9 @@ stile save task.md --base-sha "$base_sha" --actor agent:reviewer < /tmp/proposed
 ```
 
 The agent **always** reads from `base_path`, never from `FILE` directly —
-otherwise a concurrent writer's bytes can sneak into the agent's "what I edited
-from" without `stile` noticing. See `kb/spec/protocols.md` for the normative
-form and the forbidden pattern that loses updates.
+otherwise a concurrent writer's bytes can sneak into the agent's "what I
+edited from" without `stile` noticing. The normative form and the forbidden
+pattern that loses updates are at [`kb/spec/protocols.md`](kb/spec/protocols.md).
 
 ## Exit codes
 
@@ -197,13 +168,12 @@ form and the forbidden pattern that loses updates.
 v0 supports regular UTF-8 text files only. Out of scope: network sync,
 multi-user real-time collaboration over a wire, CRDTs, event sourcing,
 semantic edits, multi-file transactions, daemon / watch mode, binary files.
-The full PRD lives at `kb/domain/prd.md`.
+The full PRD lives at [`kb/domain/prd.md`](kb/domain/prd.md).
 
 ## Tests
 
 ```bash
-pip install pytest
-pytest -q
+cd cli && pip install pytest && pytest -q
 ```
 
 ## License
