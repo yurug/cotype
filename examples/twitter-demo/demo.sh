@@ -3,46 +3,56 @@
 # real agent processes at the bottom each running stile open / save in
 # parallel. Run live in your terminal to preview, or record with
 # `vhs demo.tape`.
+#
+# Implementation notes:
+# - Pane IDs (%1, %2, ...) are captured via -P -F "#{pane_id}" because
+#   numeric indices depend on the user's base-index / pane-base-index
+#   settings; pane IDs do not.
+# - Panes are created without commands; commands are sent via send-keys
+#   AFTER all four panes exist, so a failing command can never collapse
+#   the window before the layout is built.
+# - `exec` replaces the shell with the script, so the user only sees
+#   the briefest flash of their default shell prompt before the
+#   recording-friendly content takes over.
 set -euo pipefail
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 WORK="${1:-/tmp/stile-twitter-demo}"
 SESSION="${STILE_DEMO_SESSION:-stile-tmux-demo}"
 
-# tmux must be installed; stile must be on PATH.
 command -v tmux >/dev/null || { echo "tmux not on PATH" >&2; exit 2; }
 command -v stile >/dev/null || { echo "stile not on PATH (try: pip install -e cli/)" >&2; exit 2; }
 
-# Fresh slate: kill any prior session, re-seed the working dir.
 tmux kill-session -t "$SESSION" 2>/dev/null || true
 "$DIR/setup.sh" "$WORK" >/dev/null
 
-# tmux runs each pane's command via `$SHELL -c`. The -e overrides below
-# neutralise the user's zsh/bash startup files so a noisy .zshenv (e.g.
-# one that calls oh-my-zsh's `git_prompt_info` from a shared config and
-# fails under bash) cannot kill the pane before the script even runs.
-# Setting ZDOTDIR=/dev/null tells zsh to look for rc files in /dev/null;
-# BASH_ENV/ENV empty disables non-interactive bash sourcing.
-TMUX_ENV=(
-    -e "ZDOTDIR=/dev/null"
-    -e "BASH_ENV="
-    -e "ENV="
-)
+# Layout (geometry tuned for a -x 180 -y 50 client):
+#
+#   +-----------------------+   viewer  (full width, ~36 rows)
+#   |                       |
+#   +-------+-------+-------+   agent_a | agent_b | agent_c  (~14 rows)
+#
+viewer=$(tmux new-session -d -s "$SESSION" -c "$WORK" -x 180 -y 50 \
+    -P -F "#{pane_id}")
+agent_a=$(tmux split-window -v -t "$viewer"  -l 14  -c "$WORK" \
+    -P -F "#{pane_id}")
+agent_b=$(tmux split-window -h -t "$agent_a" -l 120 -c "$WORK" \
+    -P -F "#{pane_id}")
+agent_c=$(tmux split-window -h -t "$agent_b" -l 60  -c "$WORK" \
+    -P -F "#{pane_id}")
 
-# Top pane: live editor view of task.md, full width.
-tmux new-session -d -s "$SESSION" -c "$WORK" -x 180 -y 50 \
-    "${TMUX_ENV[@]}" \
-    "$DIR/bg-viewer.sh task.md"
+# Wire commands. The inline env (ZDOTDIR/BASH_ENV/ENV) belongs to the
+# `exec`-spawned process, not the outer shell that already sourced rc;
+# it shouldn't matter for our scripts but is cheap insurance.
+ENV_PREFIX='ZDOTDIR=/dev/null BASH_ENV= ENV='
+tmux send-keys -t "$viewer" \
+    "clear; $ENV_PREFIX exec '$DIR/bg-viewer.sh' task.md" Enter
+tmux send-keys -t "$agent_a" \
+    "clear; $ENV_PREFIX exec python3 '$DIR/bg-agent.py' reviewer" Enter
+tmux send-keys -t "$agent_b" \
+    "clear; $ENV_PREFIX exec python3 '$DIR/bg-agent.py' linter" Enter
+tmux send-keys -t "$agent_c" \
+    "clear; $ENV_PREFIX exec python3 '$DIR/bg-agent.py' tester" Enter
 
-# Bottom row, 14 rows tall, three equal-width agent panes.
-tmux split-window -t "$SESSION:0.0" -v -l 14  -c "$WORK" \
-    "${TMUX_ENV[@]}" "python3 $DIR/bg-agent.py reviewer"
-tmux split-window -t "$SESSION:0.1" -h -l 105 -c "$WORK" \
-    "${TMUX_ENV[@]}" "python3 $DIR/bg-agent.py linter"
-tmux split-window -t "$SESSION:0.2" -h -l 52  -c "$WORK" \
-    "${TMUX_ENV[@]}" "python3 $DIR/bg-agent.py tester"
-
-# Cosmetic: drop the status bar so the recording is uncluttered.
 tmux set-option -t "$SESSION" status off
-
 tmux attach-session -t "$SESSION"
