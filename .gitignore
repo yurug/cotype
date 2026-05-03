@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+.eggs/
+build/
+dist/
+
+# Test / venv tooling
+.pytest_cache/
+.venv/
+venv/
+.env
+.coverage
+htmlcov/
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Development tooling kept locally, not part of the project
+agentic-dev-kit/
+
+# Local hands-on test artefacts (sidecars, bases, conflicts produced by demos)
+demo/
+*.stile/
+
+# Secrets (never commit)
+gh_token
+*.token
+.env*
