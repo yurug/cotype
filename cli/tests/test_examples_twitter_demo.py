@@ -78,13 +78,20 @@ def test_bg_agent_concurrent_yields_direct_then_two_merged(tmp_path: Path):
     capture the same base via a barrier, then save with a small jitter so
     reviewer wins `direct` and the other two land `merged` against a
     stale base (via diff3 -m).
+
+    Each agent idles after its save (so its tmux pane keeps showing the
+    result), so we read its stdout via non-blocking poll and break as
+    soon as all three have written `save:`. This avoids the trap of
+    terminating tester before its 0.8 s jitter + save subprocess have
+    completed on a slow CI runner.
     """
+    import fcntl, os
+
     work = tmp_path / "work"
     subprocess.run([str(SETUP), str(work)], capture_output=True, check=True)
 
-    # Spawn all three concurrently. Each blocks at the barrier until the
-    # other two have captured a base, so spawn order doesn't matter.
     procs = []
+    buffers: dict[str, bytes] = {}
     for role in ("reviewer", "linter", "tester"):
         p = subprocess.Popen(
             [sys.executable, str(BG_AGENT), role],
@@ -92,36 +99,45 @@ def test_bg_agent_concurrent_yields_direct_then_two_merged(tmp_path: Path):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
+        # Make stdout non-blocking so we can poll it.
+        flags = fcntl.fcntl(p.stdout.fileno(), fcntl.F_GETFL)
+        fcntl.fcntl(p.stdout.fileno(), fcntl.F_SETFL, flags | os.O_NONBLOCK)
         procs.append((role, p))
+        buffers[role] = b""
 
-    # Each agent prints its save line, then idles forever. Give them up to
-    # 10 s to complete the cascade, then terminate and read output.
-    deadline = time.time() + 10.0
+    deadline = time.time() + 20.0  # generous; CI runners can be slow.
     while time.time() < deadline:
-        # Heuristic: once task.md has all three agent bodies, we're done.
-        text = (work / "task.md").read_text()
-        if all(slot not in text for slot in ("SLOT_REVIEWER", "SLOT_LINTER", "SLOT_TESTER")):
+        if all(b"save:" in buffers[r] for r, _ in procs):
             break
-        time.sleep(0.1)
+        for role, p in procs:
+            try:
+                chunk = p.stdout.read(4096)
+                if chunk:
+                    buffers[role] += chunk
+            except (BlockingIOError, OSError):
+                pass
+        time.sleep(0.05)
 
+    # Drain anything still in the pipe, then terminate and reap.
     outputs = {}
     for role, p in procs:
+        try:
+            chunk = p.stdout.read(65536)
+            if chunk:
+                buffers[role] += chunk
+        except (BlockingIOError, OSError):
+            pass
+        outputs[role] = buffers[role].decode("utf-8", "replace")
         p.terminate()
         try:
-            out, _err = p.communicate(timeout=3)
+            p.wait(timeout=3)
         except subprocess.TimeoutExpired:
             p.kill()
-            out, _err = p.communicate()
-        outputs[role] = out.decode("utf-8", "replace")
 
-    # Reviewer has SAVE_JITTER 0.0 -> first to call stile save -> direct.
     assert "save: direct" in outputs["reviewer"], outputs["reviewer"]
-    # Linter and tester have non-zero jitter; they see a stale base and
-    # disjoint slots, so diff3 merges them.
     assert "save: merged" in outputs["linter"], outputs["linter"]
     assert "save: merged" in outputs["tester"], outputs["tester"]
 
-    # Final file has all three agent sections and no leftover slots.
     final = (work / "task.md").read_text()
     for heading in ("## agent:reviewer", "## agent:linter", "## agent:tester"):
         assert heading in final, f"missing {heading}"
