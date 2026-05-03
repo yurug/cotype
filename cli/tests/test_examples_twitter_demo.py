@@ -206,12 +206,17 @@ def test_bg_claude_multi_round_section_based(tmp_path: Path):
 
     procs = []
     for role in ("code", "tests", "docs"):
+        # The agent's polling loop prints a status line per cycle. Across
+        # several rounds with three agents that adds up; on a slow runner
+        # the captured PIPE buffer can fill and block the writers
+        # (intermittent dead-lock on macOS). We assert on file content,
+        # not on the agents' stdout, so route both streams to DEVNULL.
         p = subprocess.Popen(
             [sys.executable, str(BG_CLAUDE), role],
             cwd=str(work),
             env=env,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
         procs.append((role, p))
 
