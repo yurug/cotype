@@ -60,6 +60,32 @@ def test_demo_orchestrator_lands_direct_then_merged_twice(tmp_path: Path):
         assert slot not in final, f"slot {slot} not replaced"
 
 
+def test_demo_claude_roles_match_bg_claude():
+    """`demo-claude.sh` may only spawn role names that bg-claude.py
+    understands. Catches the exact slip we just shipped: when the
+    bg-claude role set was renamed (reviewer/linter/tester -> engineer/
+    tester/marketer), demo-claude.sh kept the old names and two of three
+    panes silently exited at startup."""
+    import re
+
+    sh_text = (DEMO / "demo-claude.sh").read_text()
+    invoked = set(re.findall(r"bg-claude\.py'?\s+(\w+)", sh_text))
+    assert invoked, "no bg-claude.py invocations found in demo-claude.sh"
+
+    py_text = (DEMO / "bg-claude.py").read_text()
+    # Roles are the keys of the DEPENDENCIES dict.
+    deps_match = re.search(r"DEPENDENCIES\s*=\s*\{(.+?)\}", py_text, re.DOTALL)
+    assert deps_match, "could not find DEPENDENCIES dict in bg-claude.py"
+    valid = set(re.findall(r'"(\w+)"\s*:', deps_match.group(1)))
+    assert valid, "could not extract roles from DEPENDENCIES dict"
+
+    bad = invoked - valid
+    assert not bad, (
+        f"demo-claude.sh invokes unknown roles: {sorted(bad)}; "
+        f"bg-claude.py knows: {sorted(valid)}"
+    )
+
+
 def test_demo_assets_executable():
     # The shell scripts and python entry points should ship executable.
     paths = (

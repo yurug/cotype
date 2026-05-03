@@ -53,9 +53,9 @@ if [[ "${STILE_DEMO_FAKE_CLAUDE:-}" ]]; then
 fi
 
 tmux send-keys -t "$viewer"  "clear; $ENV_PREFIX $VIEWER_CMD" Enter
-tmux send-keys -t "$agent_a" "clear; $ENV_PREFIX exec python3 '$DIR/bg-claude.py' reviewer" Enter
-tmux send-keys -t "$agent_b" "clear; $ENV_PREFIX exec python3 '$DIR/bg-claude.py' linter" Enter
-tmux send-keys -t "$agent_c" "clear; $ENV_PREFIX exec python3 '$DIR/bg-claude.py' tester" Enter
+tmux send-keys -t "$agent_a" "clear; $ENV_PREFIX exec python3 '$DIR/bg-claude.py' engineer" Enter
+tmux send-keys -t "$agent_b" "clear; $ENV_PREFIX exec python3 '$DIR/bg-claude.py' tester"   Enter
+tmux send-keys -t "$agent_c" "clear; $ENV_PREFIX exec python3 '$DIR/bg-claude.py' marketer" Enter
 
 # Background puppeteer drives Emacs; logs to a file (not a pane) so the
 # 4-pane layout stays clean.
