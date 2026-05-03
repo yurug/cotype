@@ -1,4 +1,4 @@
-;;; Minimal Emacs init for the stile twitter-demo recording.
+;;; Minimal Emacs init for the stile demo recording.
 ;;;
 ;;; - Loads `stile.el' from ../../editors/emacs/ (path relative to this file).
 ;;; - Auto-enables `stile-mode' in any buffer whose file has a stile sidecar,

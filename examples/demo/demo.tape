@@ -5,7 +5,7 @@
 # merged because their bases went stale.
 #
 # Render:
-#   cd examples/twitter-demo
+#   cd examples/demo
 #   vhs demo.tape
 # Outputs: demo.gif, demo.mp4
 
@@ -21,7 +21,7 @@ Set TypingSpeed 30ms
 Set Padding 10
 
 # === Off-screen ===
-# Launch the demo: kills any prior session, re-seeds /tmp/stile-twitter-demo,
+# Launch the demo: kills any prior session, re-seeds /tmp/stile-demo,
 # creates the 4-pane tmux layout, sends Emacs to the top pane, sends the
 # three agent processes to the bottom panes (each with a 2 s pre-open
 # delay so Emacs has time to come up first), and attaches.

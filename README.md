@@ -63,7 +63,7 @@ shared by all of them.
 | [`cli/`](cli/) | The Python CLI implementation. `pip install -e cli/` to build. |
 | [`editors/emacs/`](editors/emacs/) | `stile-mode` minor mode for Emacs ≥ 27.1. |
 | [`examples/agent-loop/`](examples/agent-loop/) | Offline-runnable demo of the user-and-agents protocol. |
-| [`examples/twitter-demo/`](examples/twitter-demo/) | 15-second scripted demo (VHS / asciinema) for social media. |
+| [`examples/demo/`](examples/demo/) | 15-second scripted demo (VHS / asciinema) for social media. |
 | [`kb/`](kb/) | Agent-optimised knowledge base: PRD, normative spec, properties, ADRs, audit checklist. |
 
 Future editor modes will land as siblings under `editors/` (`vim`, `vscode`, …).

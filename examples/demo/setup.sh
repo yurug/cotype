@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Prepare the working directory for the demo.
-# Usage: ./setup.sh [WORKDIR]   (default: /tmp/stile-twitter-demo)
+# Usage: ./setup.sh [WORKDIR]   (default: /tmp/stile-demo)
 set -euo pipefail
 
-WORK="${1:-/tmp/stile-twitter-demo}"
+WORK="${1:-/tmp/stile-demo}"
 rm -rf "$WORK"
 mkdir -p "$WORK"
 

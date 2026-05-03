@@ -26,7 +26,6 @@ htmlcov/
 agentic-dev-kit/
 
 # Local hands-on test artefacts (sidecars, bases, conflicts produced by demos)
-demo/
 *.stile/
 
 # Secrets (never commit)
@@ -38,6 +37,6 @@ gh_token
 .claude/
 
 # Generated demo artefacts (rendered locally with vhs / asciinema)
-examples/twitter-demo/*.gif
-examples/twitter-demo/*.mp4
-examples/twitter-demo/*.cast
+examples/demo/*.gif
+examples/demo/*.mp4
+examples/demo/*.cast

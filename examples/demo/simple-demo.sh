@@ -5,7 +5,7 @@
 set -euo pipefail
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-WORK="${1:-/tmp/stile-twitter-demo}"
+WORK="${1:-/tmp/stile-demo}"
 
 # Idempotent setup: clean working dir + seeded task.md + sidecar.
 "$DIR/setup.sh" "$WORK" >/dev/null

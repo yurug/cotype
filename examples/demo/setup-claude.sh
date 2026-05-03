@@ -14,7 +14,7 @@
 # trailing-append "chat" anywhere -- the document IS the workspace.
 set -euo pipefail
 
-WORK="${1:-/tmp/stile-twitter-demo}"
+WORK="${1:-/tmp/stile-demo}"
 rm -rf "$WORK"
 mkdir -p "$WORK"
 

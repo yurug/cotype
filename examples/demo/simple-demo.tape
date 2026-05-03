@@ -2,7 +2,7 @@
 # of `direct, merged, merged`. Useful as a typed transcript; the multi-pane
 # version in `demo.tape` is the one the project advertises.
 #
-# Run: cd examples/twitter-demo && vhs simple-demo.tape
+# Run: cd examples/demo && vhs simple-demo.tape
 
 Output simple-demo.gif
 Output simple-demo.mp4
@@ -20,11 +20,11 @@ Set PlaybackSpeed 1.0
 Hide
 Type "STILE_DEMO=$(pwd)"
 Enter
-Type "./setup.sh /tmp/stile-twitter-demo > /dev/null"
+Type "./setup.sh /tmp/stile-demo > /dev/null"
 Enter
 Type "alias agents='python3 $STILE_DEMO/orchestrate.py task.md'"
 Enter
-Type "cd /tmp/stile-twitter-demo"
+Type "cd /tmp/stile-demo"
 Enter
 Type "clear"
 Enter

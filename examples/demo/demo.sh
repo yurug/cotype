@@ -17,7 +17,7 @@
 set -euo pipefail
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-WORK="${1:-/tmp/stile-twitter-demo}"
+WORK="${1:-/tmp/stile-demo}"
 SESSION="${STILE_DEMO_SESSION:-stile-tmux-demo}"
 
 command -v tmux >/dev/null || { echo "tmux not on PATH" >&2; exit 2; }

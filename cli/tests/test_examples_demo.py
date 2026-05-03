@@ -1,4 +1,4 @@
-"""Regression tests for examples/twitter-demo.
+"""Regression tests for examples/demo.
 
 Locks in BOTH demo flavours' direct/merged/merged outcome so a future
 edit to the seed template, the agents, the barrier logic, or `stile
@@ -14,7 +14,7 @@ import time
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent.parent
-DEMO = REPO / "examples" / "twitter-demo"
+DEMO = REPO / "examples" / "demo"
 SETUP = DEMO / "setup.sh"
 SETUP_CLAUDE = DEMO / "setup-claude.sh"
 ORCH = DEMO / "orchestrate.py"
@@ -241,7 +241,7 @@ def test_bg_claude_multi_round_section_based(tmp_path: Path):
 
     # Edit `## spec` directly (simulating the puppeteer's helper).
     sys_path = sys.path[:]
-    sys.path.insert(0, str(REPO / "examples" / "twitter-demo"))
+    sys.path.insert(0, str(REPO / "examples" / "demo"))
     try:
         import importlib.util
         spec = importlib.util.spec_from_file_location("bg_claude", BG_CLAUDE)
