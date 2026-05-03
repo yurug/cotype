@@ -21,6 +21,7 @@ Routing for the normative v0 spec. Open the file whose summary answers your ques
 - `api-contracts.md` — CLI flags, JSON success/conflict envelopes per command.
 - `config-and-formats.md` — schemas for state.json, conflict meta.json, base/conflict file conventions.
 - `error-taxonomy.md` — every stable error name + when it fires + exit code.
+- `protocols.md` — race-free caller sequences (editor, process, and the forbidden pattern that loses updates).
 
 ## Reading order for first-time implementers
 
@@ -28,7 +29,8 @@ Routing for the normative v0 spec. Open the file whose summary answers your ques
 2. `algorithms.md` — establishes behaviour
 3. `error-taxonomy.md` — establishes failure surface
 4. `api-contracts.md` — establishes the integration shape
-5. `config-and-formats.md` — establishes on-disk persistence
+5. `protocols.md` — establishes how a correct caller drives the API
+6. `config-and-formats.md` — establishes on-disk persistence
 
 ## Agent notes
 > If two spec files appear to disagree, `algorithms.md` wins on behaviour and `data-model.md` wins on shape. Update the loser to match.
