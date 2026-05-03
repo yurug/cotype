@@ -58,6 +58,8 @@ agent collaboration scenario is just the most direct demonstration.
 
 A runnable demo of this loop, with a deterministic offline mock agent and
 notes on wiring a real LLM, lives at [`examples/agent-loop/`](examples/agent-loop/).
+For Emacs users, a minor mode that routes `C-x C-s` through `stile` is at
+[`examples/emacs/`](examples/emacs/).
 
 ## Install
 
