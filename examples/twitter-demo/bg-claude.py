@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Polling agent for the multi-section collaborative-doc demo.
+"""Polling agent for the multi-section collaborative-coding demo.
 
 Each agent OWNS one Markdown section in `task.md` and READS another.
 On every poll cycle the agent computes the SHA-256 of its dependency
@@ -9,17 +9,17 @@ to `stile save`. Different actors edit different sections, so concurrent
 saves are disjoint diffs that stile's `diff3 -m` merges cleanly -- the
 first save lands `direct`, subsequent ones land `merged`.
 
-Roles:
+Roles for this demo (collaboratively design `sum_evens(xs)`):
 
-  engineer   reads `## requirements`   writes `## engineer`
-  tester     reads `## engineer`       writes `## tester`
-  marketer   reads `## engineer`       writes `## marketer`
+  code    reads `## spec`   writes `## code`     (the implementation)
+  tests   reads `## code`   writes `## tests`    (the assertions)
+  docs    reads `## code`   writes `## docs`     (the docstring)
 
 Real LLM responses come from the `claude` CLI when it is on PATH;
 otherwise (and when STILE_DEMO_FAKE_CLAUDE=1) the agent uses canned
 per-round bodies indexed by how many rounds it has performed.
 
-Usage: bg-claude.py <engineer|tester|marketer>
+Usage: bg-claude.py <code|tests|docs>
 """
 from __future__ import annotations
 
@@ -38,50 +38,84 @@ MAX_ROUNDS = 5
 USE_FAKE = bool(os.environ.get("STILE_DEMO_FAKE_CLAUDE"))
 CLAUDE_TIMEOUT = float(os.environ.get("STILE_DEMO_CLAUDE_TIMEOUT", "60"))
 
-# Each role's input section is the section it reacts to.
+# Each role's input section is the section it reacts to. Role names
+# match the section the role writes (so `bg-claude.py code` writes to
+# `## code` and reads `## spec`).
 DEPENDENCIES = {
-    "engineer": "requirements",
-    "tester":   "engineer",
-    "marketer": "engineer",
+    "code":  "spec",
+    "tests": "code",
+    "docs":  "code",
 }
 
 ICONS = {"direct": "✓", "merged": "⚡", "noop": "·", "conflict": "✗"}
 
-# Canned bodies per role per round (used in fake mode and as a safety
-# net when the `claude` CLI errors out). Round 0 is the response to the
-# initial seed; later rounds reflect successive user-driven changes to
-# the requirements (tantrum-proof, then $5 budget).
+# Canned bodies per role per round. Round 0 reacts to the seed spec
+# (one bullet). Round 1 reacts to spec + "Reject non-integer input
+# with ValueError." Round 2 reacts to spec + "Accept any iterable,
+# not just a list."
 FAKE_BODIES = {
-    "engineer": [
-        "PVC pipe body, paper nose cone.\n"
-        "Estes B6-4 motor, 30 cm length, 200 g.\n"
-        "Three balsa fins, hot-glued.",
+    "code": [
+        "```python\n"
+        "def sum_evens(xs):\n"
+        "    return sum(x for x in xs if x % 2 == 0)\n"
+        "```",
 
-        "Foam-over-PVC nose cone (impact-rated).\n"
-        "Reinforced fin attachment with epoxy.\n"
-        "Same B6-4 motor, 220 g.",
+        "```python\n"
+        "def sum_evens(xs):\n"
+        "    for x in xs:\n"
+        "        if not isinstance(x, int) or isinstance(x, bool):\n"
+        "            raise ValueError(f\"non-integer: {x!r}\")\n"
+        "    return sum(x for x in xs if x % 2 == 0)\n"
+        "```",
 
-        "Cardboard tube body, electrical-tape fins.\n"
-        "Estes A8-3 motor (single-use, $4).\n"
-        "Foam nose, 120 g, no recovery -- glide.",
+        "```python\n"
+        "def sum_evens(xs):\n"
+        "    total = 0\n"
+        "    for x in xs:\n"
+        "        if not isinstance(x, int) or isinstance(x, bool):\n"
+        "            raise ValueError(f\"non-integer: {x!r}\")\n"
+        "        if x % 2 == 0:\n"
+        "            total += x\n"
+        "    return total\n"
+        "```",
     ],
-    "tester": [
-        "Drop test from 1 m.\n"
-        "Outdoor ignition, 50 m safety zone.\n"
-        "Verify parachute deploys at apogee.",
+    "tests": [
+        "```python\n"
+        "assert sum_evens([1, 2, 3, 4]) == 6\n"
+        "assert sum_evens([]) == 0\n"
+        "```",
 
-        "Add pendulum wall-impact test (foam-on-foam).\n"
-        "5 m simulated child-throw.\n"
-        "Plus the existing 1 m drop test.",
+        "```python\n"
+        "assert sum_evens([1, 2, 3, 4]) == 6\n"
+        "assert sum_evens([]) == 0\n"
+        "try:\n"
+        "    sum_evens([1, \"two\"])\n"
+        "except ValueError:\n"
+        "    pass\n"
+        "else:\n"
+        "    raise AssertionError(\"expected ValueError\")\n"
+        "```",
 
-        "Drop the wall-impact test (out of budget).\n"
-        "Single outdoor launch as acceptance.\n"
-        "Recovery confirmed visually only.",
+        "```python\n"
+        "assert sum_evens([1, 2, 3, 4]) == 6\n"
+        "assert sum_evens([]) == 0\n"
+        "assert sum_evens(iter([2, 4, 6])) == 12\n"
+        "try:\n"
+        "    sum_evens([1, \"two\"])\n"
+        "except ValueError:\n"
+        "    pass\n"
+        "else:\n"
+        "    raise AssertionError(\"expected ValueError\")\n"
+        "```",
     ],
-    "marketer": [
-        "POCKET ROCKET — fits where physics doesn't.",
-        "Still flying after the kid's tantrum.",
-        "Less than a burrito. More fun than a kite.",
+    "docs": [
+        "Return the sum of the even integers in `xs`. Empty input returns 0.",
+
+        "Return the sum of the even integers in `xs`. "
+        "Raises `ValueError` if any element is not an `int`.",
+
+        "Sum the even integers in `xs`. Accepts any iterable of `int`; "
+        "raises `ValueError` on non-integer elements.",
     ],
 }
 
@@ -147,10 +181,10 @@ def section_hash(content: str, name: str) -> str:
 def is_placeholder(body: str) -> bool:
     """True iff this section body is just the seed placeholder.
 
-    The seed file uses bodies like `(no design yet -- waiting on
-    requirements)`. Downstream agents must wait until their dependency
-    section is actually filled in -- otherwise they'd react to the
-    placeholder text and burn their round-0 canned body on it."""
+    The seed file uses bodies like `(no implementation yet -- waiting on
+    spec)`. Downstream agents must wait until their dependency section
+    is actually filled in -- otherwise they'd react to the placeholder
+    text and burn their round-0 canned body on it."""
     stripped = body.strip()
     return not stripped or stripped.startswith("(no ")
 
@@ -160,33 +194,28 @@ def is_placeholder(body: str) -> bool:
 def call_claude(role: str, content: str) -> str:
     dep = DEPENDENCIES[role]
     role_hint = {
-        "engineer": "Propose a concrete design (parts, dimensions, mass).",
-        "tester":   "Propose a test plan (what to verify, how).",
-        "marketer": "Write a single-line tagline.",
+        "code":  "Write a concise Python implementation of `sum_evens(xs)` "
+                 "in a fenced ```python``` block. No explanation around it.",
+        "tests": "Write executable Python assertions exercising "
+                 "`sum_evens` in a fenced ```python``` block. No "
+                 "explanation around it.",
+        "docs":  "Write a concise one- or two-sentence docstring (plain "
+                 "prose, no fences). Just the docstring text.",
     }[role]
     prompt = (
         f"You are agent:{role} working in a shared Markdown document called "
         "`task.md` alongside a human user. The file is managed by `stile`. "
         f"Your job: write the BODY of the `## {role}` section, reacting to "
-        f"the current `## {dep}` section. Be concise (2-5 short lines). "
-        "Output ONLY the body (no header, no codefences, no preamble, no "
-        "closing remarks). The project is a tiny backpack-sized rocket; "
-        f"stay in your role: {role_hint}\n\n"
+        f"the current `## {dep}` section. Be concise. "
+        "Output ONLY the body (no header, no preamble, no closing remarks). "
+        f"Stay in your role: {role_hint}\n\n"
         f"<file>\n{content}\n</file>\n"
     )
     r = subprocess.run(
         ["claude", "--print", "-p", prompt],
         capture_output=True, text=True, check=True, timeout=CLAUDE_TIMEOUT,
     )
-    text = r.stdout.strip()
-    if text.startswith("```"):
-        lines = text.splitlines()
-        if lines[0].startswith("```"):
-            lines = lines[1:]
-        if lines and lines[-1].startswith("```"):
-            lines = lines[:-1]
-        text = "\n".join(lines).strip()
-    return text
+    return r.stdout.strip()
 
 
 def get_response(role: str, content: str, round_idx: int) -> str:
@@ -204,7 +233,9 @@ def get_response(role: str, content: str, round_idx: int) -> str:
 
 def main() -> int:
     if len(sys.argv) < 2:
-        sys.stderr.write("usage: bg-claude.py <engineer|tester|marketer>\n")
+        sys.stderr.write(
+            "usage: bg-claude.py <" + "|".join(DEPENDENCIES) + ">\n"
+        )
         return 2
     role = sys.argv[1].lower()
     if role not in DEPENDENCIES:
@@ -235,9 +266,7 @@ def main() -> int:
 
         content = Path(meta["base_path"]).read_text()
 
-        # Wait for the dependency section to be filled in. Without this
-        # gate, tester / marketer would treat the seed's "(no design yet)"
-        # placeholder as round-0 input and waste their first canned body.
+        # Wait for the dependency section to be filled in.
         if is_placeholder(section_body(content, dep)):
             time.sleep(POLL_INTERVAL)
             continue
@@ -287,7 +316,6 @@ def main() -> int:
             print(f"  ✗  {err}: {result.get('message', '')}", flush=True)
             consecutive_errors += 1
             if err == "ConflictPending":
-                # Someone else's conflict; we wait it out.
                 time.sleep(POLL_INTERVAL * 2)
         else:
             print(f"  ?  unexpected: {result}", flush=True)

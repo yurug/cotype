@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
 # Seed the working dir for the Claude collaborative-doc demo.
 #
-# Layout: a structured Markdown document with one heading per actor.
-# The user owns `## requirements`; three agents own `## engineer`,
-# `## tester`, `## marketer`. Each agent's body is initially a
-# placeholder; they fill it in by reacting to the section they depend on:
+# A short concrete programming task: design `sum_evens(xs)` together.
+# User owns `## spec` (the requirements). Three agents own one section
+# each and react to the section they depend on:
 #
-#   engineer  reads `## requirements`   writes `## engineer`
-#   tester    reads `## engineer`       writes `## tester`
-#   marketer  reads `## engineer`       writes `## marketer`
+#   code    reads `## spec`   writes `## code`     (the implementation)
+#   tests   reads `## code`   writes `## tests`    (the assertions)
+#   docs    reads `## code`   writes `## docs`     (the docstring)
 #
 # Different actors edit different sections, so concurrent saves are
 # disjoint diffs that stile's `diff3 -m` merges cleanly. There is no
@@ -20,27 +19,26 @@ rm -rf "$WORK"
 mkdir -p "$WORK"
 
 cat > "$WORK/task.md" <<'EOF'
-# 🚀 Tiny rocket build
+# `sum_evens(xs)` — a tiny collaborative function
 
-## requirements
+## spec
 
-- fits in a backpack
-- launches at least 50 m
-
-
-## engineer
-
-(no design yet -- waiting on requirements)
+- Given a list of integers, return the sum of the even ones.
 
 
-## tester
+## code
 
-(no plan yet -- waiting on engineer)
+(no implementation yet -- waiting on spec)
 
 
-## marketer
+## tests
 
-(no tagline yet -- waiting on engineer)
+(no tests yet -- waiting on code)
+
+
+## docs
+
+(no docstring yet -- waiting on code)
 EOF
 
 stile init "$WORK/task.md" --json >/dev/null

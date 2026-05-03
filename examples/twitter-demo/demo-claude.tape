@@ -1,4 +1,5 @@
-# Multi-round Claude-driven demo. ~50 s visible.
+# Multi-round Claude-driven demo: collaboratively design `sum_evens(xs)`.
+# ~45 s visible.
 #
 # Render:
 #   cd examples/twitter-demo
@@ -16,31 +17,30 @@ Set Theme "Dracula"
 Set TypingSpeed 30ms
 Set Padding 10
 
-# Off-screen launch
 Hide
 Type "./demo-claude.sh"
 Enter
 Sleep 3000ms
 Show
 
-# Round 1: Emacs is up. Engineer reacts to the seeded ## requirements;
-# tester and marketer wait for engineer, then react to the new ## engineer
-# section. With fake-claude this cascades in <2 s; with real claude
-# expect ~10-15 s for three concurrent calls.
+# Round 1: Emacs is up. The `code` agent reacts to the seeded `## spec`
+# and writes the first implementation. `tests` and `docs` waited for the
+# `## code` placeholder to fill in; once it does they cascade.
+# With fake-claude this finishes in <2 s; with real claude expect
+# ~10-15 s for three concurrent calls.
 Sleep 12000ms
 
-# Round 2 (T~12 s on the puppeteer's clock): the puppeteer M-x's the
-# `stile-demo-add-requirement` helper to insert
-#   "must survive a 5-year-old throwing it at a wall"
-# under ## requirements. Engineer regenerates ## engineer with an
-# impact-rated design; tester adds a wall-impact test; marketer
-# reaches for a tagline. ~10-15 s.
+# Round 2 (puppeteer T~12 s): user M-x's `stile-demo-add-spec` to
+# insert a stricter spec line:
+#     "Reject non-integer input with ValueError."
+# code rewrites the body to validate; tests adds a try/except
+# assertion; docs updates the docstring. ~10-15 s.
 Sleep 15000ms
 
-# Round 3 (T~27 s on the puppeteer's clock): the puppeteer adds
-#   "BOM under $5 (no NASA contracts)"
-# Engineer downgrades to cardboard + tape; tester drops the
-# wall-impact test (out of budget); marketer goes burrito.
+# Round 3 (puppeteer T~27 s): user adds
+#     "Accept any iterable, not just a list."
+# code switches to a manual-loop accumulator; tests adds an `iter(...)`
+# assertion; docs becomes "Accepts any iterable of int". ~10-15 s.
 Sleep 12000ms
 
 # Linger on the final state.

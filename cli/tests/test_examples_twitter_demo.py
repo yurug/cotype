@@ -187,18 +187,17 @@ def test_bg_agent_concurrent_yields_direct_then_two_merged(tmp_path: Path):
 def test_bg_claude_multi_round_section_based(tmp_path: Path):
     """Section-based Claude demo: each agent OWNS one section and READS
     another. When the dependency section changes, the agent regenerates
-    its own section body. The user's role (simulated here via direct
-    stile calls) is to edit `## requirements`. We assert that:
+    its own section body.
 
-      round 1: engineer/tester/marketer all populate their sections in
-               response to the seed `## requirements`.
-      round 2: when the user adds a bullet to `## requirements`, the
-               engineer regenerates `## engineer`, and tester+marketer
-               cascade off the new engineer section.
+    The pedagogical scenario is collaboratively designing
+    `sum_evens(xs)`. User owns `## spec`; agents own `## code`,
+    `## tests`, `## docs`. We assert:
 
-    The mode of each save matters less than the per-section content; this
-    test pins the canned per-round bodies so a regression in
-    parse_sections / replace_section_body / dependency tracking surfaces.
+      round 1: code/tests/docs all populate their sections in response
+               to the seed `## spec`.
+      round 2: when the user appends a stricter spec line, the code
+               agent regenerates `## code`, and tests+docs cascade off
+               the new `## code` section.
     """
     work = tmp_path / "work"
     subprocess.run([str(SETUP_CLAUDE), str(work)], capture_output=True, check=True)
@@ -206,7 +205,7 @@ def test_bg_claude_multi_round_section_based(tmp_path: Path):
     env = {**os.environ, "STILE_DEMO_FAKE_CLAUDE": "1"}
 
     procs = []
-    for role in ("engineer", "tester", "marketer"):
+    for role in ("code", "tests", "docs"):
         p = subprocess.Popen(
             [sys.executable, str(BG_CLAUDE), role],
             cwd=str(work),
@@ -226,26 +225,17 @@ def test_bg_claude_multi_round_section_based(tmp_path: Path):
 
     # Round 1: distinctive substrings from each round-0 canned body.
     round1 = {
-        "engineer": "Estes B6-4",
-        "tester":   "1 m drop",                  # "Drop test from 1 m" -- but to avoid false positives use shared substring carefully
-        "marketer": "POCKET ROCKET",
-    }
-    # Refine to substrings that only appear in round 0:
-    round1 = {
-        "engineer": "Estes B6-4",
-        "tester":   "Drop test from 1 m",
-        "marketer": "POCKET ROCKET",
+        "code":  "def sum_evens(xs):",
+        "tests": "assert sum_evens([1, 2, 3, 4]) == 6",
+        "docs":  "Empty input returns 0",
     }
     assert _wait_for(round1, time.time() + 30.0), \
         (work / "task.md").read_text()
 
-    # Edit `## requirements` directly (simulating the puppeteer's helper
-    # function in Emacs). Use the same parse/replace logic the agent uses.
+    # Edit `## spec` directly (simulating the puppeteer's helper).
     sys_path = sys.path[:]
     sys.path.insert(0, str(REPO / "examples" / "twitter-demo"))
     try:
-        # Import the module by file path; we can't ``import bg-claude``
-        # because of the dash in the filename.
         import importlib.util
         spec = importlib.util.spec_from_file_location("bg_claude", BG_CLAUDE)
         bg_claude = importlib.util.module_from_spec(spec)
@@ -260,12 +250,11 @@ def test_bg_claude_multi_round_section_based(tmp_path: Path):
     )
     base_path = Path(meta["base_path"])
     content = base_path.read_text()
-    # Append a new requirement bullet inside the requirements section.
-    new_req_body = (
-        bg_claude.section_body(content, "requirements").rstrip("\n")
-        + "\n- must survive a 5-year-old throwing it at a wall\n"
+    new_spec_body = (
+        bg_claude.section_body(content, "spec").rstrip("\n")
+        + "\n- Reject non-integer input with ValueError.\n"
     )
-    proposed = bg_claude.replace_section_body(content, "requirements", new_req_body)
+    proposed = bg_claude.replace_section_body(content, "spec", new_spec_body)
     save_r = subprocess.run(
         [
             "stile", "save", str(work / "task.md"),
@@ -279,11 +268,11 @@ def test_bg_claude_multi_round_section_based(tmp_path: Path):
     save_result = json.loads(save_r.stdout)
     assert save_result.get("status") == "saved", save_result
 
-    # Round 2: round-1 canned bodies (post-tantrum-requirement).
+    # Round 2: each agent's round-1 canned body has distinct text.
     round2 = {
-        "engineer": "Foam-over-PVC nose cone",
-        "tester":   "wall-impact test",
-        "marketer": "kid's tantrum",
+        "code":  'raise ValueError(f"non-integer:',
+        "tests": 'except ValueError:',
+        "docs":  'Raises `ValueError`',
     }
     assert _wait_for(round2, time.time() + 30.0), \
         (work / "task.md").read_text()
@@ -291,7 +280,7 @@ def test_bg_claude_multi_round_section_based(tmp_path: Path):
     final = (work / "task.md").read_text()
     # Each section heading must appear exactly once -- agents replace
     # bodies in place rather than appending new copies.
-    for header in ("## requirements", "## engineer", "## tester", "## marketer"):
+    for header in ("## spec", "## code", "## tests", "## docs"):
         assert final.count(header) == 1, f"{header!r} count != 1\n{final}"
 
     for _role, p in procs:

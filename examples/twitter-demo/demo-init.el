@@ -34,17 +34,17 @@
 (line-number-mode 1)
 (column-number-mode 0)
 
-;; Helper for the puppeteer: add a bullet at the end of the `## requirements'
+;; Helper for the puppeteer: add a bullet at the end of the `## spec'
 ;; section and save through stile. The puppeteer just needs to type
-;;   M-x stile-demo-add-requirement RET <text> RET
+;;   M-x stile-demo-add-spec RET <text> RET
 ;; to drop a new bullet and save in one keypress sequence.
-(defun stile-demo-add-requirement (text)
-  "Insert TEXT as a new bullet at the end of the `## requirements' section
-of the current buffer, then save through `stile-mode'."
-  (interactive "sNew requirement: ")
+(defun stile-demo-add-spec (text)
+  "Insert TEXT as a new bullet at the end of the `## spec' section of
+the current buffer, then save through `stile-mode'."
+  (interactive "sNew spec line: ")
   (save-excursion
     (goto-char (point-min))
-    (when (re-search-forward "^## requirements\\s-*$" nil t)
+    (when (re-search-forward "^## spec\\s-*$" nil t)
       ;; Move into the section body.
       (forward-line 1)
       ;; Skip past existing bullet lines.

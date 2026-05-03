@@ -123,78 +123,86 @@ sequence; you may want to trim the cast file.
 
 ## The Claude / multi-round demo (`demo-claude.sh`)
 
-A funny pedagogical scenario: **build a tiny backpack-sized rocket** as
-a structured Markdown document. The user owns one section; three agents
-each own another and **react to the section they depend on**:
+A short concrete pedagogical task: **collaboratively design
+`sum_evens(xs)`** as a structured Markdown design doc. The user owns
+the spec; three agents each own one downstream section and react to
+the section they depend on:
 
 ```text
-   ┌─────────────┐         ┌──────────────┐
-   │  user owns  │ ◀───── reads ──── ┌────┴────┐
-   │ ## require- │                   │ engineer│ ──────┬──── reads ────┐
-   │   ments     │ ───── reads ───▶  └────┬────┘       │               │
-   └─────────────┘                        │            ▼               ▼
-                                          │      ┌─────────┐   ┌──────────┐
-                                          └────▶ │ tester  │   │ marketer │
-                                                 └─────────┘   └──────────┘
-                                                  ## tester     ## marketer
-                                                  reacts to     reacts to
-                                                  ## engineer   ## engineer
+   ┌─────────┐     reads      ┌────────┐
+   │  user   │ ◀───────────── │  code  │
+   │ ## spec │ ─── reads ───▶ └───┬────┘
+   └─────────┘                    │
+                                  │ reads (each)
+                          ┌───────┴────────┐
+                          ▼                ▼
+                     ┌─────────┐     ┌─────────┐
+                     │  tests  │     │  docs   │
+                     │ ## tests│     │ ## docs │
+                     └─────────┘     └─────────┘
 ```
 
-The seed file:
+The seed:
 
 ```markdown
-# 🚀 Tiny rocket build
+# `sum_evens(xs)` — a tiny collaborative function
 
-## requirements
-- fits in a backpack
-- launches at least 50 m
+## spec
+- Given a list of integers, return the sum of the even ones.
 
-## engineer
-(no design yet -- waiting on requirements)
+## code
+(no implementation yet -- waiting on spec)
 
-## tester
-(no plan yet -- waiting on engineer)
+## tests
+(no tests yet -- waiting on code)
 
-## marketer
-(no tagline yet -- waiting on engineer)
+## docs
+(no docstring yet -- waiting on code)
 ```
 
 Each agent **regenerates the BODY of its own section** when its
-dependency section changes, by computing the new content (real Claude
-via `claude --print -p ...`, or canned per-round bodies in fake mode)
-and submitting the entire document to `stile save`. Two key safety
-properties fall out of this design:
+dependency section changes, computing the new content (real Claude via
+`claude --print -p ...`, or canned per-round bodies in fake mode) and
+submitting the entire document to `stile save`. Two safety properties
+fall out of this design:
 
-1. **Concurrent saves to different sections merge cleanly.** Engineer
-   editing `## engineer` and marketer editing `## marketer` produce
-   *disjoint* diffs against the base. The first save lands `direct`;
-   the second one comes back as `merged` (POSIX `diff3 -m`). No coord
-   lock required -- the document structure does the work.
-2. **Idempotence on no-op cycles.** Each agent tracks the SHA-256 of its
-   dependency section; until that hash changes, the agent doesn't write
-   anything (would be a `noop` save anyway).
+1. **Concurrent saves to different sections merge cleanly.** `tests`
+   editing `## tests` and `docs` editing `## docs` produce *disjoint*
+   diffs against the base. The first save lands `direct`; the second
+   one comes back `merged` (POSIX `diff3 -m`). No coord lock required —
+   the document structure does the work.
+2. **Idempotence on no-op cycles.** Each agent tracks the SHA-256 of
+   its dependency section; until that hash changes, the agent doesn't
+   write anything (would be a `noop` save anyway).
 
 ### What the recording shows
 
 ```text
 T=0      tmux comes up; emacs opens task.md; stile-mode lights up.
-T=1-3s   engineer reacts to seeded `## requirements` and saves
-         "PVC pipe + B6-4 motor, 30 cm, 200 g."
-         tester and marketer were waiting on the engineer placeholder;
-         once engineer lands, they cascade: tester writes a drop-test
-         plan; marketer writes "POCKET ROCKET — fits where physics
-         doesn't."
-T=12s    puppeteer M-x's `stile-demo-add-requirement` and types
-         "must survive a 5-year-old throwing it at a wall" under
-         `## requirements`. Stile-mode saves through `stile save`.
-T=13-16s engineer regenerates `## engineer` with an impact-rated foam-
-         over-PVC nose cone; tester adds a pendulum wall-impact test;
-         marketer rebrands to "Still flying after the kid's tantrum."
-T=27s    puppeteer adds "BOM under $5 (no NASA contracts)".
-T=28-31s engineer downgrades to cardboard + electrical tape; tester
-         drops the wall-impact test (out of budget); marketer goes
-         "Less than a burrito. More fun than a kite."
+T=1-3s   `code` reacts to the seed `## spec` and saves
+             def sum_evens(xs):
+                 return sum(x for x in xs if x % 2 == 0)
+         `tests` and `docs` were waiting on the `## code` placeholder;
+         once code lands, they cascade:
+             tests:  assert sum_evens([1,2,3,4]) == 6
+                     assert sum_evens([]) == 0
+             docs:   "Return the sum of the even integers in `xs`.
+                      Empty input returns 0."
+
+T=12s    puppeteer M-x's `stile-demo-add-spec` to add a bullet under
+         `## spec`:  "Reject non-integer input with ValueError."
+         code rewrites the body to validate inputs:
+             for x in xs:
+                 if not isinstance(x, int) or isinstance(x, bool):
+                     raise ValueError(f"non-integer: {x!r}")
+         tests grows a try/except assertion; docs updates the prose.
+
+T=27s    puppeteer adds "Accept any iterable, not just a list."
+         code switches to a manual accumulator; tests adds an
+         `assert sum_evens(iter([2,4,6])) == 12`; docs becomes
+         "Accepts any iterable of int; raises ValueError on non-integer".
+
+T=40s+   settled. Three sections evolved in real time, no errors.
 ```
 
 If `claude` is not on `PATH` (or `STILE_DEMO_FAKE_CLAUDE=1`), the
