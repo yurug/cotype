@@ -52,6 +52,47 @@ in parallel. Disjoint sections → `stile` auto-merges. Same section, both
 sides → `stile` conflicts and dumps the three versions for the user to settle.
 No actor ever silently overwrites another.
 
+## Recipe: spawn N headless Claude agents on one file
+
+The simplest "agents collaborate with you on a shared file" pattern is a
+loop per role. Each agent polls, asks Claude for its take, and submits
+through `stile save`. You edit `task.md` in any editor; `stile`'s 3-way
+merge keeps everyone consistent.
+
+```bash
+# requires stile, claude (Claude Code CLI), and jq on PATH.
+stile init task.md
+for role in reviewer linter tester; do
+  (
+    while true; do
+      meta=$(stile open task.md --json)
+      base_sha=$(echo "$meta" | jq -r .base_sha)
+      base_path=$(echo "$meta" | jq -r .base_path)
+      proposed=$(claude --print -p "You are agent:$role in a stile-managed
+shared Markdown file. Edit your '## agent:$role' section in place to
+respond to the user's latest input; output the entire file unchanged
+otherwise." < "$base_path")
+      printf '%s' "$proposed" | stile save task.md \
+        --base-sha "$base_sha" --actor "agent:$role" --json
+      sleep 5
+    done
+  ) &
+done
+wait     # Ctrl-C to stop all agents
+```
+
+A polished, runnable version with cleanup, error handling, and per-role
+PID tracking lives at
+[`examples/headless-agents.sh`](examples/headless-agents.sh):
+
+```bash
+./examples/headless-agents.sh task.md reviewer linter tester
+```
+
+For a richer demo (real Emacs in the loop, simulated user typing in a
+`user` pane, pre-canned bodies for the offline mode), see
+[`examples/demo/`](examples/demo/).
+
 ## Repository layout
 
 This is a small monorepo: the CLI lives next to one self-contained folder per
