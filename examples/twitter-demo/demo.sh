@@ -17,18 +17,30 @@ command -v stile >/dev/null || { echo "stile not on PATH (try: pip install -e cl
 tmux kill-session -t "$SESSION" 2>/dev/null || true
 "$DIR/setup.sh" "$WORK" >/dev/null
 
+# tmux runs each pane's command via `$SHELL -c`. The -e overrides below
+# neutralise the user's zsh/bash startup files so a noisy .zshenv (e.g.
+# one that calls oh-my-zsh's `git_prompt_info` from a shared config and
+# fails under bash) cannot kill the pane before the script even runs.
+# Setting ZDOTDIR=/dev/null tells zsh to look for rc files in /dev/null;
+# BASH_ENV/ENV empty disables non-interactive bash sourcing.
+TMUX_ENV=(
+    -e "ZDOTDIR=/dev/null"
+    -e "BASH_ENV="
+    -e "ENV="
+)
+
 # Top pane: live editor view of task.md, full width.
 tmux new-session -d -s "$SESSION" -c "$WORK" -x 180 -y 50 \
-    "exec bash '$DIR/bg-viewer.sh' task.md"
+    "${TMUX_ENV[@]}" \
+    "$DIR/bg-viewer.sh task.md"
 
-# Bottom row, ~35% height, split into three equal-width agent panes.
-# split-window -p N takes N% from the *target* pane for the new pane.
-tmux split-window -t "$SESSION:0.0" -v  -p 35 -c "$WORK" \
-    "exec python3 '$DIR/bg-agent.py' reviewer"
-tmux split-window -t "$SESSION:0.1" -h  -p 67 -c "$WORK" \
-    "exec python3 '$DIR/bg-agent.py' linter"
-tmux split-window -t "$SESSION:0.2" -h  -p 50 -c "$WORK" \
-    "exec python3 '$DIR/bg-agent.py' tester"
+# Bottom row, 14 rows tall, three equal-width agent panes.
+tmux split-window -t "$SESSION:0.0" -v -l 14  -c "$WORK" \
+    "${TMUX_ENV[@]}" "python3 $DIR/bg-agent.py reviewer"
+tmux split-window -t "$SESSION:0.1" -h -l 105 -c "$WORK" \
+    "${TMUX_ENV[@]}" "python3 $DIR/bg-agent.py linter"
+tmux split-window -t "$SESSION:0.2" -h -l 52  -c "$WORK" \
+    "${TMUX_ENV[@]}" "python3 $DIR/bg-agent.py tester"
 
 # Cosmetic: drop the status bar so the recording is uncluttered.
 tmux set-option -t "$SESSION" status off
