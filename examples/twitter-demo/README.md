@@ -1,17 +1,13 @@
 # examples/twitter-demo
 
-Two scripted demos for advertising `stile` — pick one based on whether
-you want **real concurrent processes** in a multi-pane terminal (the
-star demo) or a **paced typed transcript** in a single pane (a fallback
-when `tmux` isn't available).
+Three scripted demos for advertising `stile`. Pick by the trade-off you
+care about most:
 
-| File | Demo type | Renders to | Best for |
-|---|---|---|---|
-| `demo.sh` / `demo.tape` | **4-pane tmux**, three real concurrent agent processes | `demo.gif`, `demo.mp4` | Twitter/X — shows real `direct`, `merged`, `merged` cascade |
-| `simple-demo.sh` / `simple-demo.tape` | Single pane, scripted output | `simple-demo.gif`, `simple-demo.mp4` | Hosts without `tmux`, or as a typed-transcript embed in a blog |
-
-Both share the same setup (`setup.sh`) and helper logic; only the
-presentation differs.
+| File | Story | Length | Determinism | Cost |
+|---|---|---|---|---|
+| `demo-claude.sh` / `demo-claude.tape` | **Real Claude agents** + multi-round ping-pong (puppeteer types user follow-ups into Emacs). The richest demo — shows the actual integration end-to-end. | ~50 s | non-deterministic | a few cents per render with Haiku via the `claude` CLI; free if `claude` isn't on PATH (canned bodies) |
+| `demo.sh` / `demo.tape` | **Mock agents**, single round, all three save concurrently and produce `direct`, `merged`, `merged` via `diff3 -m`. The protocol-shape demo. | ~13 s | deterministic | none |
+| `simple-demo.sh` / `simple-demo.tape` | Single pane, scripted typed transcript. | ~13 s | deterministic | none |
 
 ## What the multi-pane demo shows
 
@@ -125,18 +121,73 @@ agg demo.cast demo.gif
 Note: asciinema records the full session including your detach key
 sequence; you may want to trim the cast file.
 
+## The Claude / multi-round demo (`demo-claude.sh`)
+
+```
++------------------------------------------------------+
+|  GNU Emacs (your editor; stile-mode)                 |
+|                                                      |
+|  ## user                                             |
+|  What's brittle here?                                |
+|  ## agent:reviewer  (round 1)  -- typed by Claude    |
+|  ## agent:linter    (round 1)                        |
+|  ## agent:tester    (round 1)                        |
+|  ## user            (typed by puppeteer at T=15s)    |
+|  Looking at the linter findings, prioritise...       |
+|  ## agent:reviewer  (round 2)                        |
+|  ...                                                 |
++------+--------------+--------------+-----------------+
+| reviewer  | linter   | tester                        |
+| · open OK | · open OK| · open OK                     |
+| ✓ direct  | ✓ direct | ✓ direct  (round 1)           |
+| ✓ direct  | ✓ direct | ✓ direct  (round 2)           |
++----------+-----------+------------------------------+
+```
+
+Three real `bg-claude.py` processes each poll their own `stile open`,
+and when they spot a `## user` block they haven't responded to, they
+shell out to `claude --print -p ...` and pipe the response through
+`stile save`. They share an agent-level `flock` (`.agent-coord.lock`)
+so their save critical sections serialise — without it they'd all
+append at end-of-file and conflict.
+
+The user side is driven by `bg-puppeteer.py`, a background process
+that types into the Emacs pane via `tmux send-keys` at scripted times:
+T=15 s "follow-up question", T=35 s "wrap up". Each typed block is
+followed by `C-x C-s`, which `stile-mode` routes through `stile save`.
+
+If `claude` is not on `PATH`, agents fall back to canned per-round
+bodies (`STILE_DEMO_FAKE_CLAUDE=1`). The recording still works; it's
+just deterministic.
+
+### Run live
+
+```bash
+cd examples/twitter-demo
+./demo-claude.sh
+```
+
+Detach with `C-b d`. Kill with `tmux kill-session -t stile-claude-demo`.
+
+### Render
+
+```bash
+vhs demo-claude.tape   # produces demo-claude.gif + .mp4
+```
+
 ## File reference
 
 | File | Role |
 |---|---|
-| `setup.sh` | Recreates `/tmp/stile-twitter-demo/task.md` with four labelled slots and runs `stile init`. Idempotent. |
-| `bg-viewer.sh` | Top-pane "live editor view" — re-renders `task.md` whenever its content hash changes. |
-| `bg-agent.py` | One agent process per bottom pane. Captures base, waits at the barrier, saves after a small jitter. Idles after one save so the result stays on screen. |
-| `demo.sh` | Wires the above into the 4-pane tmux layout. |
-| `demo.tape` | VHS recipe — runs `demo.sh`, lets the cascade play out, detaches and kills the session at the end. |
-| `orchestrate.py` | Single-process implementation used by `simple-demo.sh`: captures one base, dispatches three saves sequentially against it. |
-| `agents/{reviewer,linter,tester}.py` | Earlier single-shot mocks reused by the agent-loop example; the multi-pane demo uses `bg-agent.py` instead. |
-| `simple-demo.sh` / `simple-demo.tape` | Single-pane narrated alternative. |
+| `setup.sh` | Seeds `task.md` with four labelled slots (`SLOT_REVIEWER`, etc.) for `demo.sh`. |
+| `setup-claude.sh` | Seeds `task.md` with just the user's question for `demo-claude.sh`. |
+| `bg-viewer.sh` | Top-pane plain "live editor" loop — fallback when `emacs` is not on `PATH`. |
+| `bg-agent.py` | Mock agent for `demo.sh`. Barrier + slot replacement; one save then idle. |
+| `bg-claude.py` | Polling agent for `demo-claude.sh`. Calls `claude` CLI (or canned bodies). Multi-round. |
+| `bg-puppeteer.py` | Drives Emacs via `tmux send-keys` to type user follow-ups in `demo-claude.sh`. |
+| `demo-init.el` | Emacs init that loads `editors/emacs/stile.el` and auto-enables `stile-mode`. |
+| `orchestrate.py` | Sequential dispatcher used by `simple-demo.sh`. |
+| `agents/{reviewer,linter,tester}.py` | Single-shot mocks used by the agent-loop example (separate from these demos). |
 
 ## Why the cascade is the visual hook
 

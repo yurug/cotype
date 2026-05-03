@@ -6,6 +6,7 @@ save`'s branching can't silently break the advertised story.
 """
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -15,8 +16,10 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent.parent
 DEMO = REPO / "examples" / "twitter-demo"
 SETUP = DEMO / "setup.sh"
+SETUP_CLAUDE = DEMO / "setup-claude.sh"
 ORCH = DEMO / "orchestrate.py"
 BG_AGENT = DEMO / "bg-agent.py"
+BG_CLAUDE = DEMO / "bg-claude.py"
 
 SEED_SLOTS = ("SLOT_REVIEWER", "SLOT_LINTER", "SLOT_TESTER")
 EXPECTED_HEADINGS = (
@@ -61,10 +64,14 @@ def test_demo_assets_executable():
     # The shell scripts and python entry points should ship executable.
     paths = (
         DEMO / "setup.sh",
+        DEMO / "setup-claude.sh",
         DEMO / "demo.sh",
+        DEMO / "demo-claude.sh",
         DEMO / "simple-demo.sh",
         DEMO / "orchestrate.py",
         DEMO / "bg-agent.py",
+        DEMO / "bg-claude.py",
+        DEMO / "bg-puppeteer.py",
         DEMO / "bg-viewer.sh",
     )
     for path in paths:
@@ -149,3 +156,101 @@ def test_bg_agent_concurrent_yields_direct_then_two_merged(tmp_path: Path):
         assert heading in final, f"missing {heading}"
     for slot in ("SLOT_REVIEWER", "SLOT_LINTER", "SLOT_TESTER"):
         assert slot not in final, f"slot {slot} not replaced"
+
+
+def test_bg_claude_multi_round_with_fake_claude(tmp_path: Path):
+    """The Claude-driven multi-round demo. Three bg-claude.py processes
+    poll a stile-managed file; when there is a `## user` block they
+    haven't responded to yet, they call `claude` (fake mode here, canned
+    bodies indexed by round) and `stile save`. After one round, simulate
+    the user appending a follow-up via stile and verify all three agents
+    respond again."""
+    work = tmp_path / "work"
+    subprocess.run([str(SETUP_CLAUDE), str(work)], capture_output=True, check=True)
+
+    env = {
+        **os.environ,
+        "STILE_DEMO_FAKE_CLAUDE": "1",
+    }
+
+    procs = []
+    for role in ("reviewer", "linter", "tester"):
+        p = subprocess.Popen(
+            [sys.executable, str(BG_CLAUDE), role],
+            cwd=str(work),
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        procs.append((role, p))
+
+    def _all_three_have(text: str, marker_per_role: dict[str, str]) -> bool:
+        return all(marker in text for marker in marker_per_role.values())
+
+    # Round 1: agents see the seeded "## user\nWhat's brittle here?"
+    deadline = time.time() + 25.0
+    round1_markers = {
+        "reviewer": "## agent:reviewer",
+        "linter": "## agent:linter",
+        "tester": "## agent:tester",
+    }
+    while time.time() < deadline:
+        text = (work / "task.md").read_text()
+        if _all_three_have(text, round1_markers):
+            break
+        time.sleep(0.2)
+    text = (work / "task.md").read_text()
+    assert _all_three_have(text, round1_markers), text
+
+    # Inject a user follow-up via stile so the agents can't tell the
+    # difference between this and the real puppeteer typing in Emacs.
+    meta = json.loads(
+        subprocess.check_output(
+            ["stile", "open", str(work / "task.md"), "--json"]
+        )
+    )
+    base_path = Path(meta["base_path"])
+    proposed = (
+        base_path.read_text().rstrip("\n")
+        + "\n\n## user\nLooking at the linter findings, prioritise.\n"
+    )
+    save_r = subprocess.run(
+        [
+            "stile", "save", str(work / "task.md"),
+            "--base-sha", meta["base_sha"],
+            "--actor", "user",
+            "--json",
+        ],
+        input=proposed.encode(),
+        capture_output=True,
+        check=False,
+    )
+    save_result = json.loads(save_r.stdout)
+    assert save_result.get("status") == "saved", save_result
+
+    # Round 2: each agent's round-2 canned body has distinct text.
+    deadline = time.time() + 25.0
+    round2_markers = {
+        "reviewer": "Priority by blast-radius",
+        "linter": "Suggested fix order",
+        "tester": "Test plan after F401",
+    }
+    while time.time() < deadline:
+        text = (work / "task.md").read_text()
+        if _all_three_have(text, round2_markers):
+            break
+        time.sleep(0.2)
+
+    final = (work / "task.md").read_text()
+    for marker in round2_markers.values():
+        assert marker in final, f"missing round-2 marker: {marker!r}\n\n{final}"
+
+    # Cleanup
+    for _role, p in procs:
+        p.terminate()
+        try:
+            p.wait(timeout=3)
+        except subprocess.TimeoutExpired:
+            p.kill()
+
+
