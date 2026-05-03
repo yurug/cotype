@@ -126,7 +126,18 @@ _HEADER_RE = re.compile(r"^## (.+?)\s*$", re.MULTILINE)
 
 
 def parse_sections(content: str) -> tuple[str, list[tuple[str, str]]]:
-    """Return (preamble, [(name, body), ...]) preserving document order."""
+    """Return (preamble, [(name, body), ...]) where `body` is the section's
+    inner content with leading/trailing blank-line whitespace stripped.
+
+    Storing bodies in a *canonical* (stripped) form is the only way to
+    make `parse_sections` and `render_doc` exact inverses of the seed
+    file's layout. If they aren't inverses, every agent's save subtly
+    reformats sections it didn't touch (e.g. the blank line between
+    header and body silently disappears), the diff suddenly spans the
+    whole document, and concurrent saves on different sections start
+    conflicting because their hunks land in adjacent regions instead of
+    disjoint ones.
+    """
     matches = list(_HEADER_RE.finditer(content))
     if not matches:
         return content, []
@@ -134,33 +145,52 @@ def parse_sections(content: str) -> tuple[str, list[tuple[str, str]]]:
     sections: list[tuple[str, str]] = []
     for i, m in enumerate(matches):
         name = m.group(1).strip()
-        body_start = m.end() + 1  # +1 for newline after header
+        body_start = m.end()
         body_end = matches[i + 1].start() if i + 1 < len(matches) else len(content)
-        body = content[body_start:body_end]
+        body = content[body_start:body_end].strip("\n")
         sections.append((name, body))
     return preamble, sections
 
 
 def render_doc(preamble: str, sections: list[tuple[str, str]]) -> str:
+    """Render to the canonical layout used by the seed file:
+
+      <preamble>
+      ## name1
+      <blank line>
+      <body1>
+      <blank line>
+      <blank line>
+      ## name2
+      <blank line>
+      <body2>
+      ...
+      ## nameN
+      <blank line>
+      <bodyN>
+      <single trailing newline>
+
+    With this layout, `render_doc(*parse_sections(seed))` is exactly
+    `seed` -- a property the bg-agent test relies on so that concurrent
+    saves don't accidentally diff against each other.
+    """
     out = [preamble]
-    for name, body in sections:
-        out.append(f"## {name}\n")
-        out.append(body)
+    n = len(sections)
+    for i, (name, body) in enumerate(sections):
+        out.append(f"## {name}\n\n{body}\n")
+        if i < n - 1:
+            out.append("\n\n")  # two blank lines between sections
     return "".join(out)
 
 
 def replace_section_body(content: str, target: str, new_body: str) -> str:
-    """Return `content` with the body of `## target` replaced by `new_body`.
-
-    `new_body` is normalised to end with a single blank line, so that the
-    next `## ` header sits on a line of its own and diff3 has at least one
-    unchanged line of context between sections.
-    """
+    """Replace the body of `## target` with `new_body`. Bodies are stored
+    canonically (stripped); render adds the separators."""
     preamble, sections = parse_sections(content)
-    new_body = new_body.rstrip("\n") + "\n\n"
+    canonical = new_body.strip("\n")
     for i, (name, _body) in enumerate(sections):
         if name == target:
-            sections[i] = (name, new_body)
+            sections[i] = (name, canonical)
             break
     return render_doc(preamble, sections)
 
