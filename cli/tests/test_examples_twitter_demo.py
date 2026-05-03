@@ -158,23 +158,29 @@ def test_bg_agent_concurrent_yields_direct_then_two_merged(tmp_path: Path):
         assert slot not in final, f"slot {slot} not replaced"
 
 
-def test_bg_claude_multi_round_with_fake_claude(tmp_path: Path):
-    """The Claude-driven multi-round demo. Three bg-claude.py processes
-    poll a stile-managed file; when there is a `## user` block they
-    haven't responded to yet, they call `claude` (fake mode here, canned
-    bodies indexed by round) and `stile save`. After one round, simulate
-    the user appending a follow-up via stile and verify all three agents
-    respond again."""
+def test_bg_claude_multi_round_section_based(tmp_path: Path):
+    """Section-based Claude demo: each agent OWNS one section and READS
+    another. When the dependency section changes, the agent regenerates
+    its own section body. The user's role (simulated here via direct
+    stile calls) is to edit `## requirements`. We assert that:
+
+      round 1: engineer/tester/marketer all populate their sections in
+               response to the seed `## requirements`.
+      round 2: when the user adds a bullet to `## requirements`, the
+               engineer regenerates `## engineer`, and tester+marketer
+               cascade off the new engineer section.
+
+    The mode of each save matters less than the per-section content; this
+    test pins the canned per-round bodies so a regression in
+    parse_sections / replace_section_body / dependency tracking surfaces.
+    """
     work = tmp_path / "work"
     subprocess.run([str(SETUP_CLAUDE), str(work)], capture_output=True, check=True)
 
-    env = {
-        **os.environ,
-        "STILE_DEMO_FAKE_CLAUDE": "1",
-    }
+    env = {**os.environ, "STILE_DEMO_FAKE_CLAUDE": "1"}
 
     procs = []
-    for role in ("reviewer", "linter", "tester"):
+    for role in ("engineer", "tester", "marketer"):
         p = subprocess.Popen(
             [sys.executable, str(BG_CLAUDE), role],
             cwd=str(work),
@@ -184,36 +190,56 @@ def test_bg_claude_multi_round_with_fake_claude(tmp_path: Path):
         )
         procs.append((role, p))
 
-    def _all_three_have(text: str, marker_per_role: dict[str, str]) -> bool:
-        return all(marker in text for marker in marker_per_role.values())
+    def _wait_for(markers: dict[str, str], deadline: float) -> bool:
+        while time.time() < deadline:
+            text = (work / "task.md").read_text()
+            if all(m in text for m in markers.values()):
+                return True
+            time.sleep(0.2)
+        return False
 
-    # Round 1: agents see the seeded "## user\nWhat's brittle here?"
-    deadline = time.time() + 25.0
-    round1_markers = {
-        "reviewer": "## agent:reviewer",
-        "linter": "## agent:linter",
-        "tester": "## agent:tester",
+    # Round 1: distinctive substrings from each round-0 canned body.
+    round1 = {
+        "engineer": "Estes B6-4",
+        "tester":   "1 m drop",                  # "Drop test from 1 m" -- but to avoid false positives use shared substring carefully
+        "marketer": "POCKET ROCKET",
     }
-    while time.time() < deadline:
-        text = (work / "task.md").read_text()
-        if _all_three_have(text, round1_markers):
-            break
-        time.sleep(0.2)
-    text = (work / "task.md").read_text()
-    assert _all_three_have(text, round1_markers), text
+    # Refine to substrings that only appear in round 0:
+    round1 = {
+        "engineer": "Estes B6-4",
+        "tester":   "Drop test from 1 m",
+        "marketer": "POCKET ROCKET",
+    }
+    assert _wait_for(round1, time.time() + 30.0), \
+        (work / "task.md").read_text()
 
-    # Inject a user follow-up via stile so the agents can't tell the
-    # difference between this and the real puppeteer typing in Emacs.
+    # Edit `## requirements` directly (simulating the puppeteer's helper
+    # function in Emacs). Use the same parse/replace logic the agent uses.
+    sys_path = sys.path[:]
+    sys.path.insert(0, str(REPO / "examples" / "twitter-demo"))
+    try:
+        # Import the module by file path; we can't ``import bg-claude``
+        # because of the dash in the filename.
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("bg_claude", BG_CLAUDE)
+        bg_claude = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(bg_claude)
+    finally:
+        sys.path = sys_path
+
     meta = json.loads(
         subprocess.check_output(
             ["stile", "open", str(work / "task.md"), "--json"]
         )
     )
     base_path = Path(meta["base_path"])
-    proposed = (
-        base_path.read_text().rstrip("\n")
-        + "\n\n## user\nLooking at the linter findings, prioritise.\n"
+    content = base_path.read_text()
+    # Append a new requirement bullet inside the requirements section.
+    new_req_body = (
+        bg_claude.section_body(content, "requirements").rstrip("\n")
+        + "\n- must survive a 5-year-old throwing it at a wall\n"
     )
+    proposed = bg_claude.replace_section_body(content, "requirements", new_req_body)
     save_r = subprocess.run(
         [
             "stile", "save", str(work / "task.md"),
@@ -222,30 +248,26 @@ def test_bg_claude_multi_round_with_fake_claude(tmp_path: Path):
             "--json",
         ],
         input=proposed.encode(),
-        capture_output=True,
-        check=False,
+        capture_output=True, check=False,
     )
     save_result = json.loads(save_r.stdout)
     assert save_result.get("status") == "saved", save_result
 
-    # Round 2: each agent's round-2 canned body has distinct text.
-    deadline = time.time() + 25.0
-    round2_markers = {
-        "reviewer": "Priority by blast-radius",
-        "linter": "Suggested fix order",
-        "tester": "Test plan after F401",
+    # Round 2: round-1 canned bodies (post-tantrum-requirement).
+    round2 = {
+        "engineer": "Foam-over-PVC nose cone",
+        "tester":   "wall-impact test",
+        "marketer": "kid's tantrum",
     }
-    while time.time() < deadline:
-        text = (work / "task.md").read_text()
-        if _all_three_have(text, round2_markers):
-            break
-        time.sleep(0.2)
+    assert _wait_for(round2, time.time() + 30.0), \
+        (work / "task.md").read_text()
 
     final = (work / "task.md").read_text()
-    for marker in round2_markers.values():
-        assert marker in final, f"missing round-2 marker: {marker!r}\n\n{final}"
+    # Each section heading must appear exactly once -- agents replace
+    # bodies in place rather than appending new copies.
+    for header in ("## requirements", "## engineer", "## tester", "## marketer"):
+        assert final.count(header) == 1, f"{header!r} count != 1\n{final}"
 
-    # Cleanup
     for _role, p in procs:
         p.terminate()
         try:

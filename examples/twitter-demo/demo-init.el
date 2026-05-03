@@ -33,3 +33,24 @@
 (when (fboundp 'scroll-bar-mode) (scroll-bar-mode -1))
 (line-number-mode 1)
 (column-number-mode 0)
+
+;; Helper for the puppeteer: add a bullet at the end of the `## requirements'
+;; section and save through stile. The puppeteer just needs to type
+;;   M-x stile-demo-add-requirement RET <text> RET
+;; to drop a new bullet and save in one keypress sequence.
+(defun stile-demo-add-requirement (text)
+  "Insert TEXT as a new bullet at the end of the `## requirements' section
+of the current buffer, then save through `stile-mode'."
+  (interactive "sNew requirement: ")
+  (save-excursion
+    (goto-char (point-min))
+    (when (re-search-forward "^## requirements\\s-*$" nil t)
+      ;; Move into the section body.
+      (forward-line 1)
+      ;; Skip past existing bullet lines.
+      (while (looking-at "^- ")
+        (forward-line 1))
+      ;; Insert the new bullet on a fresh line BEFORE whatever non-bullet
+      ;; line we landed on (usually a blank line or the next `## ' header).
+      (insert "- " text "\n")))
+  (save-buffer))

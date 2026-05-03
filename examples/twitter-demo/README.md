@@ -123,42 +123,83 @@ sequence; you may want to trim the cast file.
 
 ## The Claude / multi-round demo (`demo-claude.sh`)
 
-```
-+------------------------------------------------------+
-|  GNU Emacs (your editor; stile-mode)                 |
-|                                                      |
-|  ## user                                             |
-|  What's brittle here?                                |
-|  ## agent:reviewer  (round 1)  -- typed by Claude    |
-|  ## agent:linter    (round 1)                        |
-|  ## agent:tester    (round 1)                        |
-|  ## user            (typed by puppeteer at T=15s)    |
-|  Looking at the linter findings, prioritise...       |
-|  ## agent:reviewer  (round 2)                        |
-|  ...                                                 |
-+------+--------------+--------------+-----------------+
-| reviewer  | linter   | tester                        |
-| · open OK | · open OK| · open OK                     |
-| ✓ direct  | ✓ direct | ✓ direct  (round 1)           |
-| ✓ direct  | ✓ direct | ✓ direct  (round 2)           |
-+----------+-----------+------------------------------+
+A funny pedagogical scenario: **build a tiny backpack-sized rocket** as
+a structured Markdown document. The user owns one section; three agents
+each own another and **react to the section they depend on**:
+
+```text
+   ┌─────────────┐         ┌──────────────┐
+   │  user owns  │ ◀───── reads ──── ┌────┴────┐
+   │ ## require- │                   │ engineer│ ──────┬──── reads ────┐
+   │   ments     │ ───── reads ───▶  └────┬────┘       │               │
+   └─────────────┘                        │            ▼               ▼
+                                          │      ┌─────────┐   ┌──────────┐
+                                          └────▶ │ tester  │   │ marketer │
+                                                 └─────────┘   └──────────┘
+                                                  ## tester     ## marketer
+                                                  reacts to     reacts to
+                                                  ## engineer   ## engineer
 ```
 
-Three real `bg-claude.py` processes each poll their own `stile open`,
-and when they spot a `## user` block they haven't responded to, they
-shell out to `claude --print -p ...` and pipe the response through
-`stile save`. They share an agent-level `flock` (`.agent-coord.lock`)
-so their save critical sections serialise — without it they'd all
-append at end-of-file and conflict.
+The seed file:
 
-The user side is driven by `bg-puppeteer.py`, a background process
-that types into the Emacs pane via `tmux send-keys` at scripted times:
-T=15 s "follow-up question", T=35 s "wrap up". Each typed block is
-followed by `C-x C-s`, which `stile-mode` routes through `stile save`.
+```markdown
+# 🚀 Tiny rocket build
 
-If `claude` is not on `PATH`, agents fall back to canned per-round
-bodies (`STILE_DEMO_FAKE_CLAUDE=1`). The recording still works; it's
-just deterministic.
+## requirements
+- fits in a backpack
+- launches at least 50 m
+
+## engineer
+(no design yet -- waiting on requirements)
+
+## tester
+(no plan yet -- waiting on engineer)
+
+## marketer
+(no tagline yet -- waiting on engineer)
+```
+
+Each agent **regenerates the BODY of its own section** when its
+dependency section changes, by computing the new content (real Claude
+via `claude --print -p ...`, or canned per-round bodies in fake mode)
+and submitting the entire document to `stile save`. Two key safety
+properties fall out of this design:
+
+1. **Concurrent saves to different sections merge cleanly.** Engineer
+   editing `## engineer` and marketer editing `## marketer` produce
+   *disjoint* diffs against the base. The first save lands `direct`;
+   the second one comes back as `merged` (POSIX `diff3 -m`). No coord
+   lock required -- the document structure does the work.
+2. **Idempotence on no-op cycles.** Each agent tracks the SHA-256 of its
+   dependency section; until that hash changes, the agent doesn't write
+   anything (would be a `noop` save anyway).
+
+### What the recording shows
+
+```text
+T=0      tmux comes up; emacs opens task.md; stile-mode lights up.
+T=1-3s   engineer reacts to seeded `## requirements` and saves
+         "PVC pipe + B6-4 motor, 30 cm, 200 g."
+         tester and marketer were waiting on the engineer placeholder;
+         once engineer lands, they cascade: tester writes a drop-test
+         plan; marketer writes "POCKET ROCKET — fits where physics
+         doesn't."
+T=12s    puppeteer M-x's `stile-demo-add-requirement` and types
+         "must survive a 5-year-old throwing it at a wall" under
+         `## requirements`. Stile-mode saves through `stile save`.
+T=13-16s engineer regenerates `## engineer` with an impact-rated foam-
+         over-PVC nose cone; tester adds a pendulum wall-impact test;
+         marketer rebrands to "Still flying after the kid's tantrum."
+T=27s    puppeteer adds "BOM under $5 (no NASA contracts)".
+T=28-31s engineer downgrades to cardboard + electrical tape; tester
+         drops the wall-impact test (out of budget); marketer goes
+         "Less than a burrito. More fun than a kite."
+```
+
+If `claude` is not on `PATH` (or `STILE_DEMO_FAKE_CLAUDE=1`), the
+agents use canned per-round bodies indexed by `rounds_done`; the
+recording is fully deterministic.
 
 ### Run live
 

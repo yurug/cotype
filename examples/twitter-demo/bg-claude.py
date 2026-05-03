@@ -1,153 +1,184 @@
 #!/usr/bin/env python3
-"""Polling agent that responds to user blocks via the `claude` CLI.
+"""Polling agent for the multi-section collaborative-doc demo.
 
-Each iteration:
-  1. `stile open` to capture a fresh base.
-  2. Read the file. Find the most recent `## user` block. If we have not
-     yet appended a `## agent:<role>` section AFTER that block, respond.
-  3. Build the response by calling `claude --print -p <prompt>` with the
-     current file content embedded. Fall back to a canned response if
-     the `claude` binary isn't on PATH or `STILE_DEMO_FAKE_CLAUDE` is
-     set (used by tests and offline development).
-  4. Append the response and `stile save`.
+Each agent OWNS one Markdown section in `task.md` and READS another.
+On every poll cycle the agent computes the SHA-256 of its dependency
+section; if it differs from what the agent last reacted to, the agent
+regenerates the BODY of its own section and submits the whole document
+to `stile save`. Different actors edit different sections, so concurrent
+saves are disjoint diffs that stile's `diff3 -m` merges cleanly -- the
+first save lands `direct`, subsequent ones land `merged`.
 
-The agent stops doing real work after MAX_ROUNDS responses (safety cap)
-and idles, so the recording can linger on the final state.
+Roles:
 
-Usage: bg-claude.py <reviewer|linter|tester>
+  engineer   reads `## requirements`   writes `## engineer`
+  tester     reads `## engineer`       writes `## tester`
+  marketer   reads `## engineer`       writes `## marketer`
+
+Real LLM responses come from the `claude` CLI when it is on PATH;
+otherwise (and when STILE_DEMO_FAKE_CLAUDE=1) the agent uses canned
+per-round bodies indexed by how many rounds it has performed.
+
+Usage: bg-claude.py <engineer|tester|marketer>
 """
 from __future__ import annotations
 
-import fcntl
+import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
 import time
-from contextlib import contextmanager
 from pathlib import Path
 
-POLL_INTERVAL = 2.0
+POLL_INTERVAL = 1.0
 MAX_ROUNDS = 5
 USE_FAKE = bool(os.environ.get("STILE_DEMO_FAKE_CLAUDE"))
 CLAUDE_TIMEOUT = float(os.environ.get("STILE_DEMO_CLAUDE_TIMEOUT", "60"))
 
-# Agent-level coordination lock. All three agents share this lock so
-# their `stile open + save` critical sections serialise. Without it,
-# every agent's append-at-end diff would overlap and they'd all conflict
-# on round 1; with it, each agent grabs the latest base and saves direct.
-COORD_LOCK_PATH = Path.cwd() / ".agent-coord.lock"
-
-
-@contextmanager
-def coord_lock():
-    """Serialise the open+save critical section across all agents in this dir."""
-    COORD_LOCK_PATH.touch(exist_ok=True)
-    with open(COORD_LOCK_PATH, "rb") as fd:
-        fcntl.flock(fd.fileno(), fcntl.LOCK_EX)
-        try:
-            yield
-        finally:
-            fcntl.flock(fd.fileno(), fcntl.LOCK_UN)
+# Each role's input section is the section it reacts to.
+DEPENDENCIES = {
+    "engineer": "requirements",
+    "tester":   "engineer",
+    "marketer": "engineer",
+}
 
 ICONS = {"direct": "✓", "merged": "⚡", "noop": "·", "conflict": "✗"}
 
-# Indexed by [role][round]. If the round index exceeds the list we
-# repeat the last entry. Used in fake mode and as a safety net when
-# `claude` errors out.
-FAKE_BODIES: dict[str, list[str]] = {
-    "reviewer": [
-        (
-            "## agent:reviewer\n"
-            "Three concerns:\n"
-            "- session token written to disk in plaintext\n"
-            "- retry loop has no backoff\n"
-            "- logout doesn't lock the session map"
-        ),
-        (
-            "## agent:reviewer\n"
-            "Priority by blast-radius:\n"
-            "1. Token plaintext (security)\n"
-            "2. Logout lock (correctness)\n"
-            "3. Retry backoff (robustness)"
-        ),
-        "## agent:reviewer\nAcknowledged. PR queue ready.",
-    ],
-    "linter": [
-        (
-            "## agent:linter\n"
-            "12 findings (3 must-fix):\n"
-            "- F401 unused import `hmac` at auth.py:4\n"
-            "- E501 line too long at auth.py:47\n"
-            "- C901 cyclomatic complexity 14 in `_login`"
-        ),
-        (
-            "## agent:linter\n"
-            "Suggested fix order:\n"
-            "1. F401 (delete line 4)\n"
-            "2. E501 (split assignment at line 47)\n"
-            "3. C901 (extract `_check_session` from `_login`)"
-        ),
-        "## agent:linter\nNo new findings.",
+# Canned bodies per role per round (used in fake mode and as a safety
+# net when the `claude` CLI errors out). Round 0 is the response to the
+# initial seed; later rounds reflect successive user-driven changes to
+# the requirements (tantrum-proof, then $5 budget).
+FAKE_BODIES = {
+    "engineer": [
+        "PVC pipe body, paper nose cone.\n"
+        "Estes B6-4 motor, 30 cm length, 200 g.\n"
+        "Three balsa fins, hot-glued.",
+
+        "Foam-over-PVC nose cone (impact-rated).\n"
+        "Reinforced fin attachment with epoxy.\n"
+        "Same B6-4 motor, 220 g.",
+
+        "Cardboard tube body, electrical-tape fins.\n"
+        "Estes A8-3 motor (single-use, $4).\n"
+        "Foam nose, 120 g, no recovery -- glide.",
     ],
     "tester": [
-        (
-            "## agent:tester\n"
-            "Coverage gaps:\n"
-            "- no test for expired-token branch\n"
-            "- no test for concurrent logout\n"
-            "- no negative test for malformed credentials"
-        ),
-        (
-            "## agent:tester\n"
-            "Test plan after F401/E501/C901:\n"
-            "- expired-token table-driven test\n"
-            "- threaded logout regression\n"
-            "- malformed-credentials negative cases"
-        ),
-        "## agent:tester\nWill ship the suite alongside the fix PR.",
+        "Drop test from 1 m.\n"
+        "Outdoor ignition, 50 m safety zone.\n"
+        "Verify parachute deploys at apogee.",
+
+        "Add pendulum wall-impact test (foam-on-foam).\n"
+        "5 m simulated child-throw.\n"
+        "Plus the existing 1 m drop test.",
+
+        "Drop the wall-impact test (out of budget).\n"
+        "Single outdoor launch as acceptance.\n"
+        "Recovery confirmed visually only.",
+    ],
+    "marketer": [
+        "POCKET ROCKET — fits where physics doesn't.",
+        "Still flying after the kid's tantrum.",
+        "Less than a burrito. More fun than a kite.",
     ],
 }
 
 
-def needs_response(content: str, role: str) -> bool:
-    """True iff the latest `## user` block lacks a response from this role."""
-    last_user = content.rfind("\n## user")
-    if last_user < 0:
-        # File starts with `## user` (no leading newline); check from 0.
-        last_user = 0 if content.startswith("## user") else -1
-        if last_user < 0:
-            return False
-    after = content[last_user:]
-    return f"## agent:{role}" not in after
+# -- doc parsing / rewriting -------------------------------------------------
 
+_HEADER_RE = re.compile(r"^## (.+?)\s*$", re.MULTILINE)
+
+
+def parse_sections(content: str) -> tuple[str, list[tuple[str, str]]]:
+    """Return (preamble, [(name, body), ...]) preserving document order."""
+    matches = list(_HEADER_RE.finditer(content))
+    if not matches:
+        return content, []
+    preamble = content[: matches[0].start()]
+    sections: list[tuple[str, str]] = []
+    for i, m in enumerate(matches):
+        name = m.group(1).strip()
+        body_start = m.end() + 1  # +1 for newline after header
+        body_end = matches[i + 1].start() if i + 1 < len(matches) else len(content)
+        body = content[body_start:body_end]
+        sections.append((name, body))
+    return preamble, sections
+
+
+def render_doc(preamble: str, sections: list[tuple[str, str]]) -> str:
+    out = [preamble]
+    for name, body in sections:
+        out.append(f"## {name}\n")
+        out.append(body)
+    return "".join(out)
+
+
+def replace_section_body(content: str, target: str, new_body: str) -> str:
+    """Return `content` with the body of `## target` replaced by `new_body`.
+
+    `new_body` is normalised to end with a single blank line, so that the
+    next `## ` header sits on a line of its own and diff3 has at least one
+    unchanged line of context between sections.
+    """
+    preamble, sections = parse_sections(content)
+    new_body = new_body.rstrip("\n") + "\n\n"
+    for i, (name, _body) in enumerate(sections):
+        if name == target:
+            sections[i] = (name, new_body)
+            break
+    return render_doc(preamble, sections)
+
+
+def section_body(content: str, name: str) -> str:
+    """Return the body of `## name`, or '' if absent."""
+    _, sections = parse_sections(content)
+    for n, body in sections:
+        if n == name:
+            return body
+    return ""
+
+
+def section_hash(content: str, name: str) -> str:
+    return hashlib.sha256(section_body(content, name).encode("utf-8")).hexdigest()
+
+
+def is_placeholder(body: str) -> bool:
+    """True iff this section body is just the seed placeholder.
+
+    The seed file uses bodies like `(no design yet -- waiting on
+    requirements)`. Downstream agents must wait until their dependency
+    section is actually filled in -- otherwise they'd react to the
+    placeholder text and burn their round-0 canned body on it."""
+    stripped = body.strip()
+    return not stripped or stripped.startswith("(no ")
+
+
+# -- response generation ----------------------------------------------------
 
 def call_claude(role: str, content: str) -> str:
-    """Run `claude --print -p PROMPT` and return the new section to append."""
+    dep = DEPENDENCIES[role]
+    role_hint = {
+        "engineer": "Propose a concrete design (parts, dimensions, mass).",
+        "tester":   "Propose a test plan (what to verify, how).",
+        "marketer": "Write a single-line tagline.",
+    }[role]
     prompt = (
-        f"You are agent:{role}, an AI assistant working in a shared text "
-        "file alongside a human user (the file is managed by `stile`). "
-        "Below is the current content of `task.md`. The user has a "
-        f"question or instruction at the most recent `## user` block. "
-        f"Append your response as a `## agent:{role}` section. Be "
-        "concise (3-6 lines), in your role:\n"
-        "- reviewer: code-review concerns and prioritisation\n"
-        "- linter: static-analysis findings and style\n"
-        "- tester: test coverage gaps and missing tests\n\n"
-        f"Output ONLY the new section, starting with `## agent:{role}`. "
-        "No preamble, no closing remarks, no codefences.\n\n"
+        f"You are agent:{role} working in a shared Markdown document called "
+        "`task.md` alongside a human user. The file is managed by `stile`. "
+        f"Your job: write the BODY of the `## {role}` section, reacting to "
+        f"the current `## {dep}` section. Be concise (2-5 short lines). "
+        "Output ONLY the body (no header, no codefences, no preamble, no "
+        "closing remarks). The project is a tiny backpack-sized rocket; "
+        f"stay in your role: {role_hint}\n\n"
         f"<file>\n{content}\n</file>\n"
     )
     r = subprocess.run(
         ["claude", "--print", "-p", prompt],
-        capture_output=True,
-        text=True,
-        check=True,
-        timeout=CLAUDE_TIMEOUT,
+        capture_output=True, text=True, check=True, timeout=CLAUDE_TIMEOUT,
     )
     text = r.stdout.strip()
-    # Strip codefences if claude added them anyway.
     if text.startswith("```"):
         lines = text.splitlines()
         if lines[0].startswith("```"):
@@ -159,7 +190,6 @@ def call_claude(role: str, content: str) -> str:
 
 
 def get_response(role: str, content: str, round_idx: int) -> str:
-    """Return the new `## agent:role` section for this round."""
     use_fake = USE_FAKE or not shutil.which("claude")
     if not use_fake:
         try:
@@ -170,23 +200,28 @@ def get_response(role: str, content: str, round_idx: int) -> str:
     return bodies[min(round_idx, len(bodies) - 1)]
 
 
+# -- main loop --------------------------------------------------------------
+
 def main() -> int:
     if len(sys.argv) < 2:
-        sys.stderr.write("usage: bg-claude.py <reviewer|linter|tester>\n")
+        sys.stderr.write("usage: bg-claude.py <engineer|tester|marketer>\n")
         return 2
     role = sys.argv[1].lower()
-    if role not in FAKE_BODIES:
+    if role not in DEPENDENCIES:
         sys.stderr.write(f"unknown role {role}\n")
         return 2
 
-    label = role
-    print(f"agent:{label}")
+    dep = DEPENDENCIES[role]
+    print(f"agent:{role}")
     print("─" * 28, flush=True)
+    print(f"  reads:  ## {dep}", flush=True)
+    print(f"  writes: ## {role}", flush=True)
 
+    last_dep_hash = ""
     rounds_done = 0
+    consecutive_errors = 0
+
     while rounds_done < MAX_ROUNDS:
-        # Cheap unlocked poll first so we avoid lock contention when
-        # there's nothing to do.
         try:
             meta = json.loads(
                 subprocess.check_output(
@@ -197,65 +232,73 @@ def main() -> int:
             print(f"  ✗ open: {e}", flush=True)
             time.sleep(POLL_INTERVAL)
             continue
+
         content = Path(meta["base_path"]).read_text()
-        if not needs_response(content, role):
+
+        # Wait for the dependency section to be filled in. Without this
+        # gate, tester / marketer would treat the seed's "(no design yet)"
+        # placeholder as round-0 input and waste their first canned body.
+        if is_placeholder(section_body(content, dep)):
             time.sleep(POLL_INTERVAL)
             continue
 
-        # Take the agent coord lock; re-check (another agent may have
-        # responded in the meantime); compute response from the LATEST
-        # base; save. This serialises round writes, so no two agents
-        # ever race the trailing-append region.
-        with coord_lock():
-            try:
-                meta = json.loads(
-                    subprocess.check_output(
-                        ["stile", "open", "task.md", "--json"], timeout=10,
-                    )
-                )
-            except Exception as e:
-                print(f"  ✗ open: {e}", flush=True)
-                time.sleep(POLL_INTERVAL)
-                continue
-            content = Path(meta["base_path"]).read_text()
-            if not needs_response(content, role):
-                # Race with sibling agents -- they got the user block
-                # already. Try again next poll cycle.
-                continue
+        cur_dep_hash = section_hash(content, dep)
+        if cur_dep_hash == last_dep_hash:
+            time.sleep(POLL_INTERVAL)
+            continue
 
-            round_idx = rounds_done
-            print(f"  · responding (round {round_idx + 1})...", flush=True)
-            new_section = get_response(role, content, round_idx)
-            proposed = content.rstrip("\n") + "\n\n" + new_section.strip() + "\n"
+        round_idx = rounds_done
+        print(f"  · regenerating (round {round_idx + 1}, ## {dep} changed)",
+              flush=True)
+        new_body = get_response(role, content, round_idx)
+        proposed = replace_section_body(content, role, new_body)
 
-            try:
-                r = subprocess.run(
-                    [
-                        "stile", "save", "task.md",
-                        "--base-sha", meta["base_sha"],
-                        "--actor", f"agent:{role}",
-                        "--json",
-                    ],
-                    input=proposed.encode(),
-                    capture_output=True,
-                    check=False,
-                    timeout=10,
-                )
-                result = json.loads(r.stdout)
-            except Exception as e:
-                print(f"  ✗ save: {e}", flush=True)
-                time.sleep(POLL_INTERVAL)
-                continue
+        try:
+            r = subprocess.run(
+                [
+                    "stile", "save", "task.md",
+                    "--base-sha", meta["base_sha"],
+                    "--actor", f"agent:{role}",
+                    "--json",
+                ],
+                input=proposed.encode(),
+                capture_output=True, check=False, timeout=10,
+            )
+            result = json.loads(r.stdout)
+        except Exception as e:
+            print(f"  ✗ save: {e}", flush=True)
+            time.sleep(POLL_INTERVAL)
+            continue
 
-        mode = result.get("mode") or result.get("status", "??")
-        print(
-            f"  {ICONS.get(mode, '?')}  save: {mode} (round {round_idx + 1})",
-            flush=True,
-        )
-        rounds_done += 1
+        status = result.get("status", "??")
+        if status == "saved":
+            mode = result.get("mode", "??")
+            print(f"  {ICONS.get(mode, '?')}  save: {mode} (round {round_idx + 1})",
+                  flush=True)
+            last_dep_hash = cur_dep_hash
+            rounds_done += 1
+            consecutive_errors = 0
+        elif status == "conflict":
+            print(f"  ✗  conflict {result.get('conflict_id', '?')[:8]}…  "
+                  "(retrying next poll)", flush=True)
+            consecutive_errors += 1
+        elif status == "error":
+            err = result.get("error", "??")
+            print(f"  ✗  {err}: {result.get('message', '')}", flush=True)
+            consecutive_errors += 1
+            if err == "ConflictPending":
+                # Someone else's conflict; we wait it out.
+                time.sleep(POLL_INTERVAL * 2)
+        else:
+            print(f"  ?  unexpected: {result}", flush=True)
+            consecutive_errors += 1
+
+        if consecutive_errors >= 5:
+            print("  ✗ too many errors, idling", flush=True)
+            break
+
         time.sleep(POLL_INTERVAL)
 
-    # Safety cap reached -- idle so the pane keeps showing results.
     while True:
         time.sleep(60)
 
