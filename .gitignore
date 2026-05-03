@@ -33,3 +33,6 @@ demo/
 gh_token
 *.token
 .env*
+
+# Claude Code session state (local only)
+.claude/
