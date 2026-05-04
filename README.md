@@ -2,22 +2,18 @@
 
 [![tests](https://github.com/yurug/stile/actions/workflows/test.yml/badge.svg)](https://github.com/yurug/stile/actions/workflows/test.yml)
 
-> A shared text file as the medium between you and your agents — kept consistent.
+> A shared text file as a collaborative workspace — kept consistent.
 
-`stile` is a small CLI that lets a user and one or more AI agents (or any other
-processes) collaborate on the **same text file at the same time** without losing
-anyone's edits. The file is the workspace; `stile` is what makes every save safe.
+`stile` is a small CLI that lets a user and one or more AI agents (or
+any other processes) collaborate on the **same text file at the same
+time** without losing anyone's edits. The file is the collaborative
+workspace; `stile` is what makes every save safe.
 
-A six-command tour:
+`stile` is a very simple tool, essentially an extremely minimalistic `git`, but it
+still allows the following 
 
-| Command          | What it does |
-|------------------|--------------|
-| `stile init`     | Start managing FILE: create the sidecar and capture the current contents as the first base snapshot. |
-| `stile open`     | Capture a fresh base snapshot before you edit (or before your agent does). Returns `base_sha` and a `base_path` to read the bytes from. |
-| `stile save`     | Submit a proposed new version against a base. Outcome is `direct` (clean write), `merged` (3-way merge), `noop` (proposed equals current), or `conflict` (overlapping edits, FILE left unchanged, forensic dump on disk). |
-| `stile status`   | Report whether FILE is `unmanaged`, `clean`, or `conflicted` (with the pending conflict id). |
-| `stile resolve`  | Accept a resolution for a pending conflict: either `--conflict-id ID < bytes` or the `--use-merged` shortcut after editing the merged file. |
-| `stile cat-base` | Print a base snapshot's bytes to stdout (useful in shell pipelines: `stile cat-base FILE \| my-agent \| stile save FILE --base-sha …`). |
+<Inline the GIF of the demo here>
+
 
 ## Use case: a file as the conversation
 
@@ -72,10 +68,16 @@ for role in reviewer linter tester; do
       meta=$(stile open task.md --json)
       base_sha=$(echo "$meta" | jq -r .base_sha)
       base_path=$(echo "$meta" | jq -r .base_path)
+      # `claude --print -p PROMPT` ignores stdin -- splice the current
+      # file content directly into the prompt.
       proposed=$(claude --print -p "You are agent:$role in a stile-managed
 shared Markdown file. Edit your '## agent:$role' section in place to
 respond to the user's latest input; output the entire file unchanged
-otherwise." < "$base_path")
+otherwise.
+
+<file>
+$(cat "$base_path")
+</file>")
       printf '%s' "$proposed" | stile save task.md \
         --base-sha "$base_sha" --actor "agent:$role" --json
       sleep 5
@@ -93,9 +95,18 @@ PID tracking lives at
 ./examples/headless-agents.sh task.md reviewer linter tester
 ```
 
-For a richer demo (real Emacs in the loop, simulated user typing in a
-`user` pane, pre-canned bodies for the offline mode), see
-[`examples/demo/`](examples/demo/).
+## Command description
+
+A six-command tour:
+
+| Command          | What it does                                                                                                                                                                                                              |
+|------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `stile init`     | Start managing FILE: create the sidecar and capture the current contents as the first base snapshot.                                                                                                                      |
+| `stile open`     | Capture a fresh base snapshot before you edit (or before your agent does). Returns `base_sha` and a `base_path` to read the bytes from.                                                                                   |
+| `stile save`     | Submit a proposed new version against a base. Outcome is `direct` (clean write), `merged` (3-way merge), `noop` (proposed equals current), or `conflict` (overlapping edits, FILE left unchanged, forensic dump on disk). |
+| `stile status`   | Report whether FILE is `unmanaged`, `clean`, or `conflicted` (with the pending conflict id).                                                                                                                              |
+| `stile resolve`  | Accept a resolution for a pending conflict: either `--conflict-id ID < bytes` or the `--use-merged` shortcut after editing the merged file.                                                                               |
+| `stile cat-base` | Print a base snapshot's bytes to stdout (useful in shell pipelines: `stile cat-base FILE \| my-agent \| stile save FILE --base-sha …`).                                                                                   |
 
 ## Repository layout
 
@@ -103,13 +114,13 @@ This is a small monorepo: the CLI lives next to one self-contained folder per
 editor mode. Each folder has its own README; the knowledge base at `kb/` is
 shared by all of them.
 
-| Path | What lives there |
-|---|---|
-| [`cli/`](cli/) | The Python CLI implementation. `pip install -e cli/` to build. |
-| [`editors/emacs/`](editors/emacs/) | `stile-mode` minor mode for Emacs ≥ 27.1. |
-| [`examples/agent-loop/`](examples/agent-loop/) | Offline-runnable demo of the user-and-agents protocol. |
-| [`examples/demo/`](examples/demo/) | 15-second scripted demo (VHS / asciinema) for social media. |
-| [`kb/`](kb/) | Agent-optimised knowledge base: PRD, normative spec, properties, ADRs, audit checklist. |
+| Path                                           | What lives there                                                                        |
+|------------------------------------------------|-----------------------------------------------------------------------------------------|
+| [`cli/`](cli/)                                 | The Python CLI implementation. `pip install -e cli/` to build.                          |
+| [`editors/emacs/`](editors/emacs/)             | `stile-mode` minor mode for Emacs ≥ 27.1.                                               |
+| [`examples/agent-loop/`](examples/agent-loop/) | Offline-runnable demo of the user-and-agents protocol.                                  |
+| [`examples/demo/`](examples/demo/)             | 15-second scripted demo (VHS / asciinema) for social media.                             |
+| [`kb/`](kb/)                                   | Agent-optimised knowledge base: PRD, normative spec, properties, ADRs, audit checklist. |
 
 Future editor modes will land as siblings under `editors/` (`vim`, `vscode`, …).
 
@@ -139,11 +150,11 @@ stile cat-base FILE [--base-sha HASH]
 
 `save` outcomes:
 
-| `mode`   | meaning                                                       |
-|----------|---------------------------------------------------------------|
-| `direct` | base matched current; proposed written atomically             |
-| `merged` | 3-way merge produced a clean result; merged content written   |
-| `noop`   | proposed equals current; nothing to do                        |
+| `mode`   | meaning                                                     |
+|----------|-------------------------------------------------------------|
+| `direct` | base matched current; proposed written atomically           |
+| `merged` | 3-way merge produced a clean result; merged content written |
+| `noop`   | proposed equals current; nothing to do                      |
 
 A conflict yields `status: "conflict"`, exit code `1`, and a forensic dump
 under `.<basename>.stile/conflicts/<id>/`. Resolve by hand-editing
@@ -188,16 +199,16 @@ pattern that loses updates are at [`kb/spec/protocols.md`](kb/spec/protocols.md)
 
 ## Exit codes
 
-| Code | Meaning                       |
-|------|-------------------------------|
-| 0    | success                       |
-| 1    | merge conflict                |
-| 2    | usage error                   |
-| 3    | unmanaged or corrupt sidecar  |
-| 4    | unknown base                  |
-| 5    | pending conflict              |
-| 6    | I/O error                     |
-| 7    | merge tool error              |
+| Code | Meaning                      |
+|------|------------------------------|
+| 0    | success                      |
+| 1    | merge conflict               |
+| 2    | usage error                  |
+| 3    | unmanaged or corrupt sidecar |
+| 4    | unknown base                 |
+| 5    | pending conflict             |
+| 6    | I/O error                    |
+| 7    | merge tool error             |
 
 ## Stable error names
 
@@ -211,18 +222,13 @@ pattern that loses updates are at [`kb/spec/protocols.md`](kb/spec/protocols.md)
 
 ## Why it's small
 
-`stile` is the smallest tool that can prevent lost updates: `open`,
+`stile` tries to be the smallest tool that can prevent lost updates: `open`,
 `save`, and a 3-way merge when the base is stale. No daemon, no event
 log, no CRDT, no network sync, no semantic edits, no multi-file
 transactions. The PRD's non-goals list is load-bearing — `stile`
 intentionally does *one* thing.
 
-KISS is not aesthetic here; it is the lever that makes the safety
-claims auditable. Every line of code maps to a property in
-[`kb/properties/functional.md`](kb/properties/functional.md), every
-property has a named test, and the merge engine is POSIX `diff3 -m`
-rather than a hand-rolled merger we'd have to prove correct ourselves.
-The full product brief lives at [`kb/domain/prd.md`](kb/domain/prd.md).
+We want it to do one thing and do it right. 
 
 ## Tests
 

@@ -51,7 +51,25 @@ agent() {
             continue
         fi
 
-        proposed=$(claude --print -p "$(printf 'You are agent:%s working in a Markdown file shared with a human user and other agents. The file is managed by stile (each save goes through a 3-way merge).\n\n- Read the entire current file.\n- If a `## user` block, or another agent, has added something that calls for your input AS %s, edit your `## agent:%s` section IN PLACE to respond. Replace the body, do not append.\n- If there is nothing new for you to do, output the file UNCHANGED.\n\nOutput ONLY the entire new file content. No preamble, no codefences around the file, no closing remarks.' "$role" "$role" "$role")" < "$base_path") || \
+        # Build the prompt with the file content embedded between
+        # <file> tags. `claude --print -p PROMPT` does NOT read stdin --
+        # the prompt argument is the entire input, so we have to splice
+        # the current file content into it ourselves.
+        local file_content
+        file_content=$(cat "$base_path")
+        local prompt
+        prompt="You are agent:$role working in a Markdown file shared with a human user and other agents. The file is managed by stile (each save goes through a 3-way merge).
+
+- Read the entire current file shown below.
+- If a \`## user\` block, or another agent, has added something that calls for your input AS $role, edit your \`## agent:$role\` section IN PLACE to respond. Replace the body, do not append.
+- If there is nothing new for you to do, output the file UNCHANGED.
+
+Output ONLY the entire new file content. No preamble, no codefences around the file, no closing remarks.
+
+<file>
+$file_content
+</file>"
+        proposed=$(claude --print -p "$prompt") || \
             { echo "[$role] claude failed" >&2; sleep "$INTERVAL"; continue; }
 
         result=$(printf '%s' "$proposed" | stile save "$FILE" \
