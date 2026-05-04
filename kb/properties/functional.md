@@ -61,11 +61,11 @@ Each property has: **ID**, **statement**, **violation example**, **why**, **test
 
 ### P4 — Conflicts are explicit
 
-**Statement.** On `save` returning `conflict`, (a) FILE is byte-for-byte equal to `current`, (b) `state.pending_conflict != null`, (c) `conflicts/<id>/{base,current,proposed,meta.json}` all exist, (d) exit code is 1.
+**Statement.** On `save` returning `conflict`, (a) FILE byte-for-byte equals the diff3 marker output (i.e. contains a `<<<<<<< ` opener AND a `>>>>>>> ` closer line), (b) `state.pending_conflict != null` and `state.last_known_sha == H(FILE)`, (c) `conflicts/<id>/{base,current,proposed,merged,meta.json}` all exist with their respective bytes, (d) exit code is 1.
 
-**Violation.** Conflict reported but FILE was modified, or no artifacts written.
+**Violation.** Conflict reported but FILE has neither markers nor was rolled back to `current`; missing forensic artifacts; `last_known_sha` desynced from FILE.
 
-**Why.** I4; downstream tooling needs a deterministic forensics trail.
+**Why.** I4; the user must see the conflict in their own editor (git-style) so they can resolve it inline, while downstream tooling still has a deterministic forensics trail in the sidecar.
 
 **Test.** T6 — assert all four sub-conditions.
 
@@ -97,13 +97,13 @@ Each property has: **ID**, **statement**, **violation example**, **why**, **test
 
 ### P7 — Pending conflict blocks ordinary save
 
-**Statement.** While `state.pending_conflict != null`, `save` returns `ConflictPending`, exit 5, FILE unchanged.
+**Statement.** While `state.pending_conflict != null`, `save` returns `ConflictPending`, exit 5, FILE unchanged by the rejected save (the markers from the conflicting save remain).
 
-**Violation.** Saving over a pending conflict overwrites the conflict resolution path.
+**Violation.** Saving over a pending conflict silently overwrites the markers and loses one side of the conflict.
 
-**Why.** Forces explicit resolution; preserves forensics.
+**Why.** Forces explicit resolution via `stile resolve` after the user has edited out the markers; preserves both sides until then.
 
-**Test.** T7 — after T6, attempt `save`; assert exit 5 and FILE unchanged.
+**Test.** T7 — after T6, attempt `save`; assert exit 5 and FILE bytes unchanged.
 
 ---
 
@@ -205,13 +205,13 @@ Each property has: **ID**, **statement**, **violation example**, **why**, **test
 
 ### P-path-traversal-safety (no ID; cross-cutting)
 
-**Statement.** All paths inside the sidecar are derived from a fixed scheme rooted at the sidecar dir. No user-supplied string (actor, conflict-id from CLI, etc.) is concatenated into a filesystem path without validation.
+**Statement.** All paths inside the sidecar are derived from a fixed scheme rooted at the sidecar dir. No user-supplied string (actor, base-sha hex, etc.) is concatenated into a filesystem path without validation. Conflict ids are generated server-side (uuid4 hex) and never accepted from the user.
 
-**Violation.** `--conflict-id ../../etc/passwd` opens an unrelated file.
+**Violation.** A future CLI flag accepts a caller-supplied id and concatenates it into a sidecar path without validation, allowing escape.
 
 **Why.** Defence in depth: even if an attacker controls a CLI flag, they can't escape the sidecar.
 
-**Test.** Pass `--conflict-id ../foo`; assert validation rejection.
+**Test.** Path components built from caller input go through hex/regex validators (see `paths.py`).
 
 ## Agent notes
 > Every test for a property should reference its ID in its name (e.g. `test_P1_no_silent_overwrite`).

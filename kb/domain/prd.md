@@ -120,8 +120,9 @@ T3  agent B (a different worker) is also running. It opens task.md, edits a
     different section, saves. The user's edit and agent B's edit don't
     overlap -- mode = merged.
 T4  user and agent A both edit the same section at once. stile refuses to
-    overwrite either side. mode = conflict; user opens the conflict dump
-    and decides.
+    silently pick a winner. mode = conflict; FILE is rewritten with diff3
+    markers; the user edits them out and runs `stile resolve` to clear
+    the pending state. Agents idle while the conflict is pending.
 ```
 
 The file is a persistent, version-controllable workspace that the user can read, edit, and redirect at any moment. Multiple agents can act in parallel without a central UI. `stile` is what makes the whole pattern safe.
@@ -136,7 +137,7 @@ Given an editor opened base `A`, and a process saved `B`, when the editor saves 
 
 ### US3: Conflict instead of lost update
 
-Given an editor opened base `A`, and a process saved `B`, when the editor saves conflicting `C`, `stile` must not overwrite `B`. It leaves `file.txt` unchanged and writes conflict artifacts.
+Given an editor opened base `A`, and a process saved `B`, when the editor saves conflicting `C`, `stile` must not silently choose between `B` and `C`. It rewrites `file.txt` with diff3 markers spanning both versions, sets a pending-conflict state, and writes forensic artifacts. Subsequent saves are rejected with `ConflictPending` until the user edits out the markers and runs `stile resolve`.
 
 ### US4: Same protocol for humans and processes
 
@@ -207,10 +208,14 @@ Returns whether the file is managed, its current hash, and whether a conflict is
 ### Resolve conflict
 
 ```bash
-stile resolve file.txt --conflict-id ID --actor user < resolved-content.txt
+stile resolve file.txt --actor user
 ```
 
-Writes the resolved content atomically and clears the pending conflict.
+When `stile save` produces a conflict, `file.txt` is rewritten in place
+with diff3 markers (`<<<<<<<` / `=======` / `>>>>>>>`). The user opens
+`file.txt` in their editor, removes the markers, saves the buffer, and
+runs `stile resolve file.txt` to clear the pending conflict. `resolve`
+refuses if any markers are still present.
 
 ## 9. Editor integration contract
 
@@ -270,7 +275,7 @@ Base snapshots enable 3-way merge. The target file remains a normal file. `stile
 
 ### I4: Conflicts are explicit
 
-On conflict, `file.txt` remains unchanged and a conflict artifact is written. A pending conflict is visible through `stile status`.
+On conflict, `stile save` rewrites `file.txt` with diff3 markers (`<<<<<<<` / `=======` / `>>>>>>>`) — both sides preserved verbatim — and records a pending-conflict state in the sidecar. Until the user edits out the markers and runs `stile resolve`, every subsequent `stile save` is rejected with `ConflictPending`. A forensic copy of the three sides (`base`, `current`, `proposed`, `merged`) is kept under `<sidecar>/conflicts/<id>/` for diagnostics.
 
 ## 12. MVP scope
 

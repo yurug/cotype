@@ -108,45 +108,26 @@ def _make_pending_conflict(f: Path) -> str:
     return json.loads(out)["conflict_id"]
 
 
-def test_cli_resolve_use_merged_happy_path(tmp_path: Path):
+def test_cli_resolve_happy_path(tmp_path: Path):
     f = tmp_path / "f.txt"
-    cid = _make_pending_conflict(f)
-    merged = tmp_path / ".f.txt.stile" / "conflicts" / cid / "merged"
-    merged.write_bytes(b"a\nresolved\nc\n")
-    rc, out, err = run_cli(["resolve", str(f), "--use-merged", "--json"])
+    _make_pending_conflict(f)
+    # The user edits FILE in their editor to remove markers.
+    f.write_bytes(b"a\nresolved\nc\n")
+    rc, out, err = run_cli(["resolve", str(f), "--json"])
     assert rc == 0, err
     assert json.loads(out)["status"] == "resolved"
     assert f.read_bytes() == b"a\nresolved\nc\n"
 
 
-def test_cli_resolve_use_merged_refuses_with_markers(tmp_path: Path):
+def test_cli_resolve_refuses_with_markers(tmp_path: Path):
     f = tmp_path / "f.txt"
     _make_pending_conflict(f)
-    # Don't edit merged -- it still has diff3 markers.
-    rc, out, _err = run_cli(["resolve", str(f), "--use-merged", "--json"])
+    # Don't edit FILE -- it still has the diff3 markers from the conflict.
+    rc, out, _err = run_cli(["resolve", str(f), "--json"])
     assert rc == 2  # UsageError exit code
     obj = json.loads(out)
     assert obj["error"] == "UsageError"
     assert "conflict markers" in obj["message"]
-
-
-def test_cli_resolve_traversal_id_rejected(tmp_path: Path):
-    f = tmp_path / "f.txt"
-    f.write_text("x\ny\nz\n")
-    run_cli(["init", str(f), "--json"])
-    rc, out, _ = run_cli(["open", str(f), "--json"])
-    base_sha = json.loads(out)["base_sha"]
-    f.write_text("x\ny-current\nz\n")
-    run_cli(
-        ["save", str(f), "--base-sha", base_sha, "--json"],
-        stdin=b"x\ny-proposed\nz\n",
-    )
-    rc, out, _ = run_cli(
-        ["resolve", str(f), "--conflict-id", "../escape", "--json"],
-        stdin=b"hi\n",
-    )
-    assert rc == 2
-    assert json.loads(out)["error"] == "UsageError"
 
 
 def test_cli_conflict_exits_1(tmp_path: Path):

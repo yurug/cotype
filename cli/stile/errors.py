@@ -54,11 +54,6 @@ class ConflictPending(StileError):
     exit_code = 5
 
 
-class ConflictIdMismatch(StileError):
-    name = "ConflictIdMismatch"
-    exit_code = 2
-
-
 class IoError(StileError):
     name = "IoError"
     exit_code = 6

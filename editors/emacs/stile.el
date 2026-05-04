@@ -28,10 +28,10 @@
 ;;   (add-hook 'find-file-hook #'stile-maybe-enable)
 ;;
 ;; Interactive entry points:
-;;   M-x stile-init                start managing the current buffer
-;;   M-x stile-mode                toggle the minor mode for this buffer
-;;   M-x stile-status              echo the current stile status
-;;   M-x stile-resolve-use-merged  after editing the merged conflict file
+;;   M-x stile-init     start managing the current buffer
+;;   M-x stile-mode     toggle the minor mode for this buffer
+;;   M-x stile-status   echo the current stile status
+;;   M-x stile-resolve  after editing out the diff3 conflict markers
 
 ;;; Code:
 
@@ -189,14 +189,17 @@ Emacs' default file-write."
         (message "stile: saved (%s)" mode)
         t))
      ((string= status "conflict")
-      (let* ((cp (plist-get data :conflict_path))
-             (cid (plist-get data :conflict_id))
-             (merged (and cp (expand-file-name "merged" cp))))
-        (message "stile: conflict %s -- edit %s, then M-x stile-resolve-use-merged"
-                 cid merged)
-        (when (and merged (file-readable-p merged))
-          (find-file-other-window merged))
-        ;; Buffer stays modified (we don't lose user's work).
+      ;; FILE now contains diff3 conflict markers. Reload it so the user
+      ;; sees and edits the markers in this very buffer; after editing,
+      ;; M-x stile-resolve clears the pending state.
+      (let ((cid (plist-get data :conflict_id))
+            (sha (plist-get data :markers_sha)))
+        (revert-buffer t t t)
+        (when sha (setq stile--base-sha sha))
+        (set-buffer-modified-p nil)
+        (set-visited-file-modtime)
+        (message "stile: conflict %s -- edit out markers, then M-x stile-resolve"
+                 (and cid (substring cid 0 8)))
         t))
      ((string= status "error")
       (message "stile: %s: %s"
@@ -240,24 +243,33 @@ Emacs' default file-write."
     (message "stile: %s" (or status "?"))))
 
 ;;;###autoload
-(defun stile-resolve-use-merged ()
-  "Resolve the pending conflict using the (presumably edited) merged file.
-Run this from the *original* buffer after editing
-`<sidecar>/conflicts/<id>/merged' to remove diff3 markers."
+(defun stile-resolve ()
+  "Clear the pending conflict by accepting the buffer's current contents.
+Run this after editing out the diff3 `<<<<<<<' / `>>>>>>>' markers.
+If the buffer is modified, it is written to disk first (bypassing the
+ordinary `stile save' path -- which would be rejected while a conflict
+is pending) and then `stile resolve' is called."
   (interactive)
   (unless (buffer-file-name)
     (user-error "Buffer has no associated file"))
-  (let* ((resp (stile--call-json
-                "resolve" (buffer-file-name) "--use-merged" "--json"))
-         (exit (car resp))
-         (data (cdr resp)))
-    (if (zerop exit)
-        (progn
-          (revert-buffer t t t)
-          (stile--open-current-buffer)
-          (message "stile: resolved"))
-      (message "stile: %s"
-               (or (and data (plist-get data :message)) "resolve failed")))))
+  (let ((file (buffer-file-name)))
+    (when (buffer-modified-p)
+      ;; `stile resolve' reads FILE off disk; flush the buffer there
+      ;; without going through `stile--save-via-stile' (which would
+      ;; raise ConflictPending).
+      (let ((write-contents-functions nil))
+        (write-region (point-min) (point-max) file nil 'no-message))
+      (set-buffer-modified-p nil)
+      (set-visited-file-modtime))
+    (let* ((resp (stile--call-json "resolve" file "--json"))
+           (exit (car resp))
+           (data (cdr resp)))
+      (if (zerop exit)
+          (progn
+            (setq stile--base-sha (and data (plist-get data :sha)))
+            (message "stile: resolved"))
+        (message "stile: %s"
+                 (or (and data (plist-get data :message)) "resolve failed"))))))
 
 
 ;; -- the minor mode --------------------------------------------------------
@@ -271,8 +283,9 @@ FILE directly. On activation, the buffer is reloaded from the base
 snapshot stile captured, so what the user sees is exactly what stile
 believes the base to be.
 
-Conflicts open the merged file in another window; resolve with
-\\[stile-resolve-use-merged] from this buffer."
+On conflict, FILE is rewritten with diff3 markers and the buffer is
+reverted to show them; edit out the markers and clear the pending
+state with \\[stile-resolve]."
   :lighter " stile"
   (cond
    (stile-mode

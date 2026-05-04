@@ -103,9 +103,9 @@ A six-command tour:
 |------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `stile init`     | Start managing FILE: create the sidecar and capture the current contents as the first base snapshot.                                                                                                                      |
 | `stile open`     | Capture a fresh base snapshot before you edit (or before your agent does). Returns `base_sha` and a `base_path` to read the bytes from.                                                                                   |
-| `stile save`     | Submit a proposed new version against a base. Outcome is `direct` (clean write), `merged` (3-way merge), `noop` (proposed equals current), or `conflict` (overlapping edits, FILE left unchanged, forensic dump on disk). |
+| `stile save`     | Submit a proposed new version against a base. Outcome is `direct` (clean write), `merged` (3-way merge), `noop` (proposed equals current), or `conflict` (overlapping edits — FILE is rewritten with `<<<<<<<` / `>>>>>>>` diff3 markers and a forensic dump is kept in the sidecar). |
 | `stile status`   | Report whether FILE is `unmanaged`, `clean`, or `conflicted` (with the pending conflict id).                                                                                                                              |
-| `stile resolve`  | Accept a resolution for a pending conflict: either `--conflict-id ID < bytes` or the `--use-merged` shortcut after editing the merged file.                                                                               |
+| `stile resolve`  | Clear a pending conflict by accepting FILE's current contents. Edit FILE in your editor to remove the diff3 markers, then run `stile resolve FILE`.                                                                       |
 | `stile cat-base` | Print a base snapshot's bytes to stdout (useful in shell pipelines: `stile cat-base FILE \| my-agent \| stile save FILE --base-sha …`).                                                                                   |
 
 ## Repository layout
@@ -144,7 +144,7 @@ stile init     FILE [--json]
 stile open     FILE [--json]
 stile save     FILE --base-sha HASH [--actor ACTOR] [--json] < proposed
 stile status   FILE [--json]
-stile resolve  FILE [--conflict-id ID | --use-merged] [--actor ACTOR] [--json]
+stile resolve  FILE [--actor ACTOR] [--json]
 stile cat-base FILE [--base-sha HASH]
 ```
 
@@ -156,9 +156,12 @@ stile cat-base FILE [--base-sha HASH]
 | `merged` | 3-way merge produced a clean result; merged content written |
 | `noop`   | proposed equals current; nothing to do                      |
 
-A conflict yields `status: "conflict"`, exit code `1`, and a forensic dump
-under `.<basename>.stile/conflicts/<id>/`. Resolve by hand-editing
-`merged` and running `stile resolve --use-merged`.
+A conflict yields `status: "conflict"`, exit code `1`, and rewrites FILE
+in place with diff3 markers (`<<<<<<<` / `=======` / `>>>>>>>`). Open
+FILE in your editor, remove the markers, save, then run
+`stile resolve FILE`. A forensic copy of the three sides is kept under
+`.<basename>.stile/conflicts/<id>/` for diagnostics. Until `resolve` is
+called, every `stile save` returns `ConflictPending`.
 
 `--actor` is a free-form label (e.g. `emacs`, `agent:reviewer`,
 `agent:formatter`, `me`). Stored in the conflict metadata; never affects
@@ -213,7 +216,7 @@ pattern that loses updates are at [`kb/spec/protocols.md`](kb/spec/protocols.md)
 ## Stable error names
 
 `UsageError`, `UnsupportedFile`, `UnmanagedFile`, `CorruptSidecar`,
-`UnknownBase`, `ConflictPending`, `ConflictIdMismatch`, `IoError`,
+`UnknownBase`, `ConflictPending`, `IoError`,
 `MergeToolError`, `InvalidUtf8`. JSON shape:
 
 ```json

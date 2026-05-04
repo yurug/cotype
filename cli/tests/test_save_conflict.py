@@ -26,14 +26,19 @@ def test_T6_P4_stale_conflicting_save_writes_artifacts(tmp_path: Path):
 
     r = cmd_save(str(f), base_sha, "editor", proposed)
     assert r["status"] == "conflict"
-    # P4(a): FILE byte-for-byte = current.
-    assert f.read_bytes() == current_bytes
-    # P4(c): all four artefacts present.
+    # P4(a): FILE now contains the diff3 markers in place; both sides are
+    # present so the user (or their editor) can resolve inline.
+    file_bytes = f.read_bytes()
+    assert b"<<<<<<< " in file_bytes
+    assert b">>>>>>> " in file_bytes
+    assert b"y-current" in file_bytes
+    assert b"y-proposed" in file_bytes
+    # P4(c): all four forensic artefacts still present in the sidecar.
     cdir = Path(r["conflict_path"])
     assert (cdir / "base").read_bytes() == b"x\ny\nz\n"
     assert (cdir / "current").read_bytes() == current_bytes
     assert (cdir / "proposed").read_bytes() == proposed
-    assert (cdir / "merged").exists()
+    assert (cdir / "merged").read_bytes() == file_bytes
     # meta.json has the documented shape.
     meta = json.loads((cdir / "meta.json").read_text())
     assert meta["id"] == r["conflict_id"]
@@ -45,9 +50,11 @@ def test_T6_P4_stale_conflicting_save_writes_artifacts(tmp_path: Path):
 
 
 def test_T7_P7_pending_conflict_blocks_save(with_pending_conflict):
-    f, cid = with_pending_conflict
+    f, _cid = with_pending_conflict
+    before = f.read_bytes()
     op = cmd_open(str(f))  # open is allowed even with a pending conflict
     with pytest.raises(ConflictPending):
         cmd_save(str(f), op["base_sha"], "test", b"anything\n")
-    # FILE remains the "current" from the conflict.
-    assert f.read_text() == "hello\nCURRENT\n"
+    # FILE remains in its conflicted state -- save is rejected without
+    # touching it.
+    assert f.read_bytes() == before

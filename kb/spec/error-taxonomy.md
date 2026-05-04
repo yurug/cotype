@@ -34,13 +34,12 @@ Every named error. Implementation must use these strings verbatim — they are p
 
 | `error`              | Exit | Triggered when                                                                                  |
 |----------------------|------|--------------------------------------------------------------------------------------------------|
-| `UsageError`         | 2    | argparse failure; missing required arg; `--conflict-id` provided to a command that doesn't take it; `resolve` called with no pending conflict. |
+| `UsageError`         | 2    | argparse failure; missing required arg; `resolve` called with no pending conflict; `resolve` called while FILE still contains diff3 conflict markers. |
 | `UnsupportedFile`    | 3    | target is not a regular file (dir, symlink loop, fifo, socket, device); target missing for `init`. |
 | `UnmanagedFile`      | 3    | sidecar absent and command requires it (`save`, `resolve`).                                      |
 | `CorruptSidecar`     | 3    | `state.json` missing/malformed/unknown `format_version`; required sidecar subdir absent.         |
 | `UnknownBase`        | 4    | `--base-sha HASH` given but `bases/<hex>` does not exist OR HASH is not a syntactically valid sha256 string. |
 | `ConflictPending`    | 5    | `save` called while `state.pending_conflict != null`.                                            |
-| `ConflictIdMismatch` | 2    | `resolve --conflict-id ID` where `ID != state.pending_conflict.id`.                              |
 | `IoError`            | 6    | unexpected OS error (EIO, ENOSPC, EACCES on FILE, lock acquisition failure, etc.).               |
 | `MergeToolError`     | 7    | `diff3` is missing, exits with status >=2, or its stderr indicates malfunction.                  |
 | `InvalidUtf8`        | 3    | bytes (current, proposed, or resolved) fail UTF-8 decode.                                        |

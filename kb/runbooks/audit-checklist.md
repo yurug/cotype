@@ -40,14 +40,14 @@ Run through this list before each release. Treat any unchecked critical/high as 
 - [ ] P13 (mode preserved) — explicit test creating 0640 file.
 - [ ] P14 (noop short-circuit) — T4 test.
 - [ ] P15 (base_path matches base_sha) — T2 test.
-- [ ] P-path-traversal-safety — T22 test (`--conflict-id ../escape`).
+- [ ] P-path-traversal-safety — T22 (sidecar paths only built from server-side hex/uuid).
 
 ## Section C — Security
 
 - [ ] No `subprocess.run(..., shell=True)`. Grep the codebase.
 - [ ] No `os.system`, no `eval`, no `exec`.
 - [ ] All paths inside the sidecar are derived from a fixed scheme; no user string concatenated into a path without validation.
-- [ ] `--conflict-id` is validated as 32-char lowercase hex before any filesystem operation uses it.
+- [ ] Sidecar conflict ids are server-generated (uuid4 hex from `save`), never accepted from a CLI flag.
 - [ ] `--actor` is stored verbatim in `meta.json`; never used to build a path.
 - [ ] Temp file creation uses `tempfile.NamedTemporaryFile` or `mkstemp` — never predictable names.
 - [ ] No secrets in error messages or logs.

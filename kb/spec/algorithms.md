@@ -123,11 +123,14 @@ if result == Conflict(merged_with_markers):
     id = uuid4_hex()
     create_conflict_dir(id, actor, base, current, proposed, merged_with_markers,
                         base_sha, curr_sha, prop_sha)
+    markers_sha = H(merged_with_markers)
+    atomic_replace(FILE, merged_with_markers)         # markers visible to user
+    store_base(merged_with_markers)
     update state.pending_conflict = {id, base_sha, current_sha=curr_sha,
                                       proposed_sha=prop_sha,
                                       path=conflicts/<id>}
-    leave FILE byte-for-byte = current
-    return conflict(id, conflict_path)
+    update state.last_known_sha = markers_sha
+    return conflict(id, conflict_path, markers_sha)
 
 if result == ToolError(detail):
     do not modify FILE or sidecar state
@@ -156,25 +159,26 @@ else: return clean(current_sha, last_known_sha)
 
 ## `resolve`
 
-Inputs: `FILE`, `--conflict-id ID`, optional `--actor`, stdin = `resolved`.
+Inputs: `FILE`, optional `--actor`. No stdin.
 
 ```
 acquire lock
 state = read state.json
 reject if state.pending_conflict is null  -> UsageError ("no pending conflict")
-reject if state.pending_conflict.id != ID -> ConflictIdMismatch
-resolved = read stdin; reject if not utf-8 -> InvalidUtf8
-resolved_sha = H(resolved)
-atomic_replace(FILE, resolved)
-store_base(resolved)
-state.last_known_sha = resolved_sha
+content = read(FILE); reject if not utf-8 -> InvalidUtf8
+reject if has_conflict_markers(content)   -> UsageError ("conflict markers present")
+sha = H(content)
+store_base(content)
+state.last_known_sha = sha
 state.pending_conflict = null
 write state.json
 release lock
-return resolved(resolved_sha)
+return resolved(sha)
 ```
 
 The conflict directory is **kept** on disk for forensics. There is no garbage collection at present.
+
+`has_conflict_markers(content)` returns true iff some line starts with `<<<<<<< ` AND some line starts with `>>>>>>> `. Requiring both rules out false positives from a lone `=======` (Markdown Setext H1 underlines).
 
 ## `merge3` (internal)
 

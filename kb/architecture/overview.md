@@ -93,7 +93,6 @@ StileError(Exception)
  ├── CorruptSidecar            # exit 3
  ├── UnknownBase               # exit 4
  ├── ConflictPending           # exit 5
- ├── ConflictIdMismatch        # exit 2
  ├── IoError                   # exit 6
  ├── MergeToolError            # exit 7
  └── InvalidUtf8               # exit 3

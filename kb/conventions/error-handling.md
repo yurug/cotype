@@ -27,7 +27,6 @@ class UnmanagedFile(StileError):    name = "UnmanagedFile";    exit_code = 3
 class CorruptSidecar(StileError):   name = "CorruptSidecar";   exit_code = 3
 class UnknownBase(StileError):      name = "UnknownBase";      exit_code = 4
 class ConflictPending(StileError):  name = "ConflictPending";  exit_code = 5
-class ConflictIdMismatch(StileError): name = "ConflictIdMismatch"; exit_code = 2
 class IoError(StileError):          name = "IoError";          exit_code = 6
 class MergeToolError(StileError):   name = "MergeToolError";   exit_code = 7
 class InvalidUtf8(StileError):      name = "InvalidUtf8";      exit_code = 3

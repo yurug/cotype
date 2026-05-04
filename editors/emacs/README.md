@@ -41,7 +41,7 @@ Customise:
 | `M-x stile-init` | Run `stile init` on the buffer's file and enable `stile-mode`. |
 | `M-x stile-mode` | Toggle the minor mode for this buffer. |
 | `M-x stile-status` | Echo the current `stile status` of the buffer's file. |
-| `M-x stile-resolve-use-merged` | After editing the merged conflict file, accept it as the resolution. |
+| `M-x stile-resolve` | After editing out the diff3 conflict markers in the buffer, clear the pending state. |
 
 Once `stile-mode` is on (lighter: ` stile`), pressing `C-x C-s` runs
 `stile save --base-sha <captured>` instead of writing the file
@@ -51,11 +51,11 @@ directly. You'll see one of:
 - `stile: saved (merged)` — another actor edited disjoint regions; the
   3-way merge is on disk and your buffer was reverted to match.
 - `stile: saved (noop)` — the file already matches what you tried to save.
-- `stile: conflict <id> -- edit <merged>, then M-x stile-resolve-use-merged`
-   — Emacs opens the merged file in another window. Edit out the
-   `<<<<<<<`/`=======`/`>>>>>>>` markers, save that buffer the normal
-   way, switch back to the original buffer, and run
-   `M-x stile-resolve-use-merged`.
+- `stile: conflict <id> -- edit out markers, then M-x stile-resolve` —
+   FILE has been rewritten with diff3 markers and the buffer reverted
+   to show them. Edit out the `<<<<<<<` / `=======` / `>>>>>>>` blocks,
+   then run `M-x stile-resolve` to clear the pending state. (No need
+   to save the buffer first — `stile-resolve` flushes it for you.)
 
 ## Manual smoke test
 
@@ -91,10 +91,12 @@ The integration mirrors `kb/spec/protocols.md`:
   --actor emacs --json`. Returning `t` from a `write-contents-functions`
   hook suppresses Emacs' default write, so the file is only ever modified
   via `stile`.
-- **On conflict**: visit the conflict's merged file in another window;
-  the user resolves manually and then runs `stile-resolve-use-merged`,
-  which calls `stile resolve --use-merged` and reverts the original
-  buffer.
+- **On conflict**: `stile save` rewrote FILE with diff3 markers; the
+  buffer is reverted so the user sees those markers in place. After the
+  user edits them out, `M-x stile-resolve` writes the buffer to disk
+  (bypassing the save hook, which would be rejected with
+  `ConflictPending`) and calls `stile resolve FILE` to clear the
+  pending state.
 
 ## How concurrent writes appear in your buffer
 
@@ -119,7 +121,7 @@ if you want to drive it yourself.
 ## Known limitations
 
 - No automated tests.
-- No transient/keymap UI; conflict resolution is `M-x stile-resolve-use-merged`.
+- No transient/keymap UI; conflict resolution is `M-x stile-resolve`.
 - Auto-save (`#filename#` files) writes outside `write-contents-functions`;
   consider `(setq auto-save-default nil)` in stile-mode buffers if it
   bothers you. Auto-revert is now coordinated automatically (see above).

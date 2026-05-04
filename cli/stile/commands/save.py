@@ -113,7 +113,10 @@ def cmd_save(file_arg: str, base_sha: str, actor: str, proposed: bytes) -> dict:
             write_state(sidecar, st)
             return {"status": "saved", "mode": "merged", "sha": merged_sha}
 
-        # Conflict: forensics dump + state update; FILE untouched.
+        # Conflict: write the merged-with-markers content directly into FILE
+        # so the user sees and edits markers in place (git-style). The sidecar
+        # keeps a forensic dump for diagnostics; pending_conflict blocks all
+        # further saves until `stile resolve` clears it.
         assert isinstance(result, Conflict)
         cid = uuid.uuid4().hex
         cdir = conflict_dir(sidecar, cid)
@@ -139,6 +142,9 @@ def cmd_save(file_arg: str, base_sha: str, actor: str, proposed: bytes) -> dict:
         except OSError as e:
             raise IoError(f"writing conflict dir {cdir}: {e}") from e
 
+        markers_sha = hash_bytes(result.merged_with_markers)
+        atomic_replace(file, result.merged_with_markers, sidecar)
+        store_base(sidecar, result.merged_with_markers, markers_sha)
         st.pending_conflict = PendingConflict(
             id=cid,
             base_sha=base_sha,
@@ -146,6 +152,7 @@ def cmd_save(file_arg: str, base_sha: str, actor: str, proposed: bytes) -> dict:
             proposed_sha=prop_sha,
             path=str(cdir),
         )
+        st.last_known_sha = markers_sha
         write_state(sidecar, st)
         return {
             "status": "conflict",
@@ -154,4 +161,5 @@ def cmd_save(file_arg: str, base_sha: str, actor: str, proposed: bytes) -> dict:
             "base_sha": base_sha,
             "current_sha": curr_sha,
             "proposed_sha": prop_sha,
+            "markers_sha": markers_sha,
         }

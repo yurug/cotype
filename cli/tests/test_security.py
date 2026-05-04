@@ -7,9 +7,8 @@ import pytest
 
 from stile.commands.init import cmd_init
 from stile.commands.open_ import cmd_open
-from stile.commands.resolve import cmd_resolve
 from stile.commands.save import cmd_save
-from stile.errors import MergeToolError, UsageError
+from stile.errors import MergeToolError
 
 
 def test_T20_P10_diff3_missing_is_tool_error_not_conflict(
@@ -28,12 +27,6 @@ def test_T20_P10_diff3_missing_is_tool_error_not_conflict(
     assert f.read_bytes() == b"a\nB\nc\n"
     sidecar = tmp_path / ".f.txt.stile"
     assert list((sidecar / "conflicts").iterdir()) == []
-
-
-def test_T22_path_traversal_in_conflict_id_rejected(with_pending_conflict):
-    f, _ = with_pending_conflict
-    with pytest.raises(UsageError):
-        cmd_resolve(str(f), "../escape", "test", b"resolved\n")
 
 
 def test_T19_actor_with_shell_metacharacters_is_safe(tmp_path: Path):

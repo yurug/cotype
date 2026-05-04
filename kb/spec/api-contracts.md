@@ -69,9 +69,12 @@ Conflict:
   "conflict_path": ".file.txt.stile/conflicts/<id>",
   "base_sha": "sha256:...",
   "current_sha": "sha256:...",
-  "proposed_sha": "sha256:..."
+  "proposed_sha": "sha256:...",
+  "markers_sha": "sha256:..."
 }
 ```
+On conflict, FILE is rewritten in place with the diff3 marker output (its SHA-256 is `markers_sha`). The sidecar still keeps a forensic copy at `<conflict_path>/{base, current, proposed, merged}` for diagnostics. `state.last_known_sha` becomes `markers_sha` and `state.pending_conflict` is set; further `save` calls return `ConflictPending` until `resolve` clears it.
+
 Exit: 0 saved · 1 conflict · 4 unknown base · 5 pending conflict · 7 merge tool error · 3 corrupt/unmanaged · 2 usage · 6 io.
 
 ## `stile status FILE [--json]`
@@ -95,21 +98,16 @@ Unmanaged:
 ```
 Exit: 0 in all three states. (`status` is reporting; not a failure.)
 
-## `stile resolve FILE [--conflict-id ID | --use-merged] [--actor ACTOR] [--json]`
+## `stile resolve FILE [--actor ACTOR] [--json]`
 
-Two equivalent forms:
+Reads FILE off disk and accepts it as the resolution: snapshots the bytes as a new base, sets `state.last_known_sha`, and clears `state.pending_conflict`. Refuses with `UsageError` if a `<<<<<<< ` opener and a `>>>>>>> ` closer line are both present (diff3 markers still in place — the user has not finished resolving). Refuses with `UsageError` when no conflict is pending. Reads no stdin.
 
-- `--conflict-id ID < RESOLVED` — explicit. Caller names the pending conflict and pipes the resolved bytes on stdin.
-- `--use-merged` — shortcut. Reads `<sidecar>/conflicts/<id>/merged` (after the user has hand-edited it to remove diff3 markers) and uses those bytes as the resolution. The conflict id is taken from `state.pending_conflict.id`. Refuses with `UsageError` if a `<<<<<<< ` opener and a `>>>>>>> ` closer line are both present in the file (diff3 markers still in place).
-
-Forms are mutually exclusive — combining `--use-merged` with `--conflict-id` or stdin is a `UsageError`.
-
-Output (both forms):
+Output:
 
 ```json
 { "status": "resolved", "file": "file.txt", "sha": "sha256:..." }
 ```
-Exit: 0 success · 2 usage (no pending conflict, id mismatch, markers still present, mutually-exclusive flags) · 3 corrupt/unmanaged/invalid-utf8 · 6 io.
+Exit: 0 success · 2 usage (no pending conflict, markers still present) · 3 corrupt/unmanaged/invalid-utf8 · 6 io.
 
 ## `stile cat-base FILE [--base-sha HASH]`
 
@@ -142,8 +140,9 @@ Without `--json`, a one-line message goes to **stderr**. Exit code is set per `s
 
 ## Stdin handling
 
-- `save` and `resolve` consume stdin to EOF. Read as raw bytes; UTF-8 decode for validation only.
+- `save` consumes stdin to EOF. Read as raw bytes; UTF-8 decode for validation only.
 - A closed/empty stdin is a legitimate "empty proposed content" — hash is `H(b"")`. Not an error.
+- `resolve` does NOT read stdin (it reads FILE itself).
 
 ## Agent notes
 > The conflict envelope is asymmetric: success returns `mode`, conflict returns `conflict_id` + per-side hashes. Don't conflate them in client code.

@@ -7,6 +7,34 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Changed (BREAKING) — inline conflict resolution
+
+The conflict UX now follows the git-merge pattern: instead of leaving FILE
+unchanged and asking the user to find and hand-edit the merged file in a
+hidden sidecar directory, `stile save` rewrites FILE in place with
+`<<<<<<<` / `=======` / `>>>>>>>` diff3 markers, and the user resolves
+inline.
+
+- `stile save` on conflict: FILE now contains the diff3 marker output;
+  `state.last_known_sha` becomes the hash of that content; the `conflict`
+  JSON envelope gains a `markers_sha` field. Forensic dump under
+  `<sidecar>/conflicts/<id>/{base,current,proposed,merged}` is unchanged.
+- `stile resolve FILE` is the new flow: reads FILE off disk, refuses if
+  diff3 markers remain, otherwise snapshots and clears the pending
+  conflict. The old `--conflict-id ID < bytes` and `--use-merged` forms
+  are removed; `resolve` takes no flags besides `--actor` / `--json`.
+- Product invariant I4 loosened: FILE *does* change on conflict (gains
+  markers); the protection is now that further saves are blocked with
+  `ConflictPending` until the markers are gone and `resolve` runs.
+- `examples/headless-agents.sh` idles agents while a conflict is pending
+  instead of burning Claude calls on saves that can never succeed.
+- `stile.el`: new `M-x stile-resolve` (replaces `stile-resolve-use-merged`).
+  On a save's conflict reply, the buffer is reverted so the user sees
+  the markers in their own editor.
+
+Migration: callers using the old `--use-merged` or `--conflict-id` forms
+must switch to the new flow (edit FILE, then `stile resolve FILE`).
+
 ## [0.1.0] — 2026-05-03
 
 First public release. Two coupled releases under one tag-namespace:

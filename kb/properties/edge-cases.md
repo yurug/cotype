@@ -53,17 +53,17 @@ Each entry: **ID** · **scenario** · **expected** · **enforces**.
 
 ### T6 — stale conflicting save
 - Scenario: `base = "x\ny\nz\n"`, `current = "x\ny-current\nz\n"`, `proposed = "x\ny-proposed\nz\n"`.
-- Expected: `status=conflict` exit 1, FILE bytes = `current`, `conflicts/<id>/{base,current,proposed,meta.json}` all written, `state.pending_conflict.id == id`.
+- Expected: `status=conflict` exit 1; FILE rewritten with diff3 markers (contains both a `<<<<<<< ` opener and a `>>>>>>> ` closer line, plus both `y-current` and `y-proposed`); `conflicts/<id>/{base,current,proposed,merged,meta.json}` all written; `state.pending_conflict.id == id`; `state.last_known_sha == H(FILE)`.
 - Enforces: P1, P4.
 
 ### T7 — pending conflict blocks save
 - Scenario: after T6, attempt any `save`.
-- Expected: `error=ConflictPending`, exit 5, FILE unchanged.
+- Expected: `error=ConflictPending`, exit 5, FILE bytes unchanged by the rejected save (the markers from T6 remain).
 - Enforces: P7.
 
 ### T8 — resolve clears conflict
-- Scenario: after T6, run `resolve --conflict-id <id> < resolved-bytes`.
-- Expected: exit 0, FILE bytes = resolved, `state.pending_conflict == null`, `status` reports `clean`.
+- Scenario: after T6, edit FILE on disk to remove the markers, then run `stile resolve FILE`.
+- Expected: exit 0, FILE bytes = the user's edited content, `state.pending_conflict == null`, `status` reports `clean`. If FILE still has markers, `resolve` exits 2 with `UsageError`.
 - Enforces: P4 (post-resolution cleanup), P12.
 
 ### T9 — unknown base
@@ -129,9 +129,9 @@ Each entry: **ID** · **scenario** · **expected** · **enforces**.
 - Expected: one wins as `direct` or `merged`; the other observes that (now stale) and either merges or conflicts. Never both succeed silently.
 - Enforces: P6, P1.
 
-### T22 — `--conflict-id ../escape`
-- Scenario: malicious resolve attempt.
-- Expected: validation rejects (must be 32 lowercase hex chars). `UsageError` exit 2.
+### T22 — sidecar paths are not built from caller input
+- Scenario: review the code paths that compose `<sidecar>/conflicts/<id>` and `<sidecar>/bases/<hex>`.
+- Expected: `id` is generated server-side (uuid4 hex from `save`), never accepted from the user; base hex is validated as 64 lowercase hex chars before path composition. No external string is concatenated into a sidecar path without validation.
 - Enforces: P-path-traversal-safety.
 
 ## Agent notes

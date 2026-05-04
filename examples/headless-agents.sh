@@ -5,6 +5,12 @@
 # file content, and submits the response through `stile save`. The
 # 3-way merge serialises concurrent edits across actors.
 #
+# When `stile save` produces a conflict the file gets diff3-style
+# `<<<<<<<` / `>>>>>>>` markers. While markers are present, agents
+# stop calling Claude -- the user is expected to edit FILE in their
+# editor and run `stile resolve FILE`. Agents resume automatically
+# once resolve clears the pending state.
+#
 # Usage:
 #   ./headless-agents.sh FILE role1 [role2 ...]
 #
@@ -33,46 +39,30 @@ done
 [[ -f "$FILE" ]] || touch "$FILE"
 stile init "$FILE" --json >/dev/null 2>&1 || true
 
-# Sidecar path next to FILE -- used in conflict-recovery messages.
-sidecar_dir() {
-    local f="$1"
-    printf '%s/.%s.stile' "$(dirname "$f")" "$(basename "$f")"
-}
-
-print_conflict_recovery() {
-    local cid="${1:-}"
+print_conflict_hint() {
     cat >&2 <<EOF
-A pending conflict on $FILE blocks every save.
-Recover by ONE of:
-  - resolve it (after hand-editing the merged file):
-      stile resolve "$FILE" --use-merged
-  - or wipe the sidecar to start fresh (drops base history):
-      rm -rf "$(sidecar_dir "$FILE")"
+[stile] $FILE has a pending conflict.
+Edit the file to remove the <<<<<<< / ======= / >>>>>>> markers, then run:
+    stile resolve "$FILE"
+Agents will resume automatically once the conflict clears.
 EOF
-    [[ -n "$cid" ]] && echo "Pending conflict id: $cid" >&2
 }
 
-# Refuse to start if a conflict is already pending -- otherwise every
-# agent will burn Claude calls on saves that can never succeed.
-init_status=$(stile status "$FILE" --json)
-if [[ "$(printf '%s' "$init_status" | jq -r .status)" == "conflicted" ]]; then
-    cid=$(printf '%s' "$init_status" | jq -r '.pending_conflict.id')
-    print_conflict_recovery "$cid"
-    exit 5
-fi
-
-# Race-safe one-shot lock: the first agent to win `mkdir $LOCK_DIR/announced`
-# prints recovery instructions; the others stay quiet.
-LOCK_DIR=$(mktemp -d -t stile-headless.XXXXXX)
-PARENT_PID=$$
-
-# Per-role agent loop. Runs in a subshell so they're independent.
+# Per-role agent loop. Runs in a subshell so each role is independent.
 agent() {
     local role="$1"
     local last_sha=""
     while true; do
-        local meta base_sha base_path proposed result mode
+        # Idle while a conflict is pending: no save can succeed and the
+        # user is the only actor who can resolve it. Saves Claude calls.
+        local s
+        s=$(stile status "$FILE" --json 2>/dev/null | jq -r '.status // "??"')
+        if [[ "$s" == "conflicted" ]]; then
+            sleep "$INTERVAL"
+            continue
+        fi
 
+        local meta base_sha base_path proposed result
         meta=$(stile open "$FILE" --json) || { sleep "$INTERVAL"; continue; }
         base_sha=$(printf '%s' "$meta" | jq -r .base_sha)
         base_path=$(printf '%s' "$meta" | jq -r .base_path)
@@ -84,10 +74,8 @@ agent() {
             continue
         fi
 
-        # Build the prompt with the file content embedded between
-        # <file> tags. `claude --print -p PROMPT` does NOT read stdin --
-        # the prompt argument is the entire input, so we have to splice
-        # the current file content into it ourselves.
+        # `claude --print -p PROMPT` does NOT read stdin -- splice the
+        # current file content into the prompt directly, between <file> tags.
         local file_content
         file_content=$(cat "$base_path")
         local prompt
@@ -123,7 +111,7 @@ $file_content
         result=$(printf '%s' "$proposed" | stile save "$FILE" \
             --base-sha "$base_sha" --actor "agent:$role" --json) || true
 
-        local status mode err msg
+        local status mode err msg cid
         status=$(printf '%s' "$result" | jq -r '.status // "??"')
         case "$status" in
             saved)
@@ -132,22 +120,14 @@ $file_content
                 ;;
             conflict)
                 cid=$(printf '%s' "$result" | jq -r '.conflict_id')
-                printf '[%-12s] conflict %s -- run `stile resolve %s --use-merged` after editing\n' \
+                printf '[%-12s] conflict %s -- markers written to %s\n' \
                     "agent:$role" "${cid:0:8}" "$FILE"
+                print_conflict_hint
                 ;;
             error)
                 err=$(printf '%s' "$result" | jq -r '.error')
                 msg=$(printf '%s' "$result" | jq -r '.message')
                 printf '[%-12s] error: %s -- %s\n' "agent:$role" "$err" "$msg"
-                if [[ "$err" == "ConflictPending" ]]; then
-                    # Stop the whole script: every save will fail until
-                    # the user resolves or wipes the sidecar.
-                    if mkdir "$LOCK_DIR/announced" 2>/dev/null; then
-                        print_conflict_recovery
-                    fi
-                    kill -TERM "$PARENT_PID" 2>/dev/null || true
-                    return 0
-                fi
                 ;;
             *)
                 printf '[%-12s] unexpected: %s\n' "agent:$role" "$result"
@@ -165,7 +145,7 @@ for role in "${ROLES[@]}"; do
     agent "$role" &
     pids+=($!)
 done
-trap 'kill "${pids[@]}" 2>/dev/null || true; rm -rf "$LOCK_DIR"' EXIT INT TERM
+trap 'kill "${pids[@]}" 2>/dev/null || true' EXIT INT TERM
 
 echo "${#ROLES[@]} agents running on $FILE -- Ctrl-C to stop." >&2
 wait
