@@ -12,7 +12,7 @@ target="${1:-task.md}"
 while true; do
     # Some terminals lack `clear`; fall back to ANSI cursor-home + erase.
     clear 2>/dev/null || printf '\033[H\033[J'
-    printf '\033[1;36m─── %s ─── (your editor; stile-managed) ─\033[0m\n' "$target"
+    printf '\033[1;36m─── %s ─── (your editor; cotype-managed) ─\033[0m\n' "$target"
     cat "$target" 2>/dev/null || echo "(waiting for $target...)"
     sleep 0.5
 done

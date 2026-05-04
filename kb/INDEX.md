@@ -1,7 +1,7 @@
 ---
 id: index
 type: index
-summary: Master routing for the stile KB — start here.
+summary: Master routing for the cotype KB — start here.
 domain: meta
 last-updated: 2026-05-03
 depends-on: []
@@ -9,11 +9,11 @@ refines: []
 related: []
 ---
 
-# stile — Knowledge Base
+# cotype — Knowledge Base
 
 ## What this KB covers
 
-`stile` is a tiny CLI that prevents lost updates when a text file is edited
+`cotype` is a tiny CLI that prevents lost updates when a text file is edited
 concurrently by a human editor and one or more processes. The core is
 deliberately small: `init`, `open`, `save`, `status`, `resolve`, `cat-base`,
 with safe atomic writes and 3-way merge via POSIX `diff3`.
@@ -30,7 +30,7 @@ with safe atomic writes and 3-way merge via POSIX `diff3`.
 
 | Goal                                  | Load these files (in order)                                                                                                              |
 |---------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------|
-| Understand what stile does            | `GLOSSARY.md`, `domain/prd.md`                                                                                                           |
+| Understand what cotype does            | `GLOSSARY.md`, `domain/prd.md`                                                                                                           |
 | Implement a command                   | `indexes/by-task.md#implement`, `architecture/overview.md`, `spec/algorithms.md`, `spec/api-contracts.md`, `properties/functional.md`     |
 | Implement the merge module            | `architecture/overview.md`, `spec/algorithms.md`, `external/diff3.md`, `architecture/decisions/0002-diff3-for-merge.md`                   |
 | Implement atomic_write / lock         | `external/posix-fs.md`, `architecture/decisions/0003-sidecar-flock.md`, `properties/functional.md` (P2, P12, P13)                         |

@@ -13,10 +13,10 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Optional
 
-from stile.atomic_write import atomic_replace
-from stile.errors import CorruptSidecar, IoError
-from stile.hash import hex_part
-from stile.paths import base_path
+from cotype.atomic_write import atomic_replace
+from cotype.errors import CorruptSidecar, IoError
+from cotype.hash import hex_part
+from cotype.paths import base_path
 
 FORMAT_VERSION = 1
 

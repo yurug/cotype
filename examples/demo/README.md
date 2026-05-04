@@ -1,6 +1,6 @@
 # examples/twitter-demo
 
-Three scripted demos for advertising `stile`. Pick by the trade-off you
+Three scripted demos for advertising `cotype`. Pick by the trade-off you
 care about most:
 
 | File | Story | Length | Determinism | Cost |
@@ -11,16 +11,16 @@ care about most:
 
 ## What the multi-pane demo shows
 
-The top pane is a **real Emacs** running our `stile-mode` (the same
+The top pane is a **real Emacs** running our `cotype-mode` (the same
 integration shipped at `editors/emacs/`). The three bottom panes are
-**real processes** running `stile open` and `stile save` against the
+**real processes** running `cotype open` and `cotype save` against the
 same `task.md`. As they save, Emacs's auto-revert reloads the buffer
 and the user sees the file grow section by section.
 
 ```
 +-----------------------------------------------+
 |                                               |
-|   GNU Emacs (-Q + demo-init.el; stile-mode)   |
+|   GNU Emacs (-Q + demo-init.el; cotype-mode)   |
 |                                               |
 |   # Refactor src/auth.py                      |
 |   ## user                                     |
@@ -31,7 +31,7 @@ and the user sees the file grow section by section.
 |     12 findings (3 must-fix): ...             |
 |   ## agent:tester                             |
 |     Coverage gaps: ...                        |
-|   --- mode-line --- All L1 (Markdown stile)   |
+|   --- mode-line --- All L1 (Markdown cotype)   |
 +--------------+--------------+-----------------+
 | agent:reviewer | agent:linter | agent:tester  |
 | ─────────────  | ────────────  | ────────────  |
@@ -45,17 +45,17 @@ Sequence:
 1. The four panes appear. Agents print their headers and then sleep a
    short `START_DELAY` (default 2 s) so Emacs has time to start up.
 2. Emacs finishes loading: `-Q -l demo-init.el task.md`. The init
-   loads `editors/emacs/stile.el` and adds `stile-maybe-enable` to
+   loads `editors/emacs/cotype.el` and adds `cotype-maybe-enable` to
    `find-file-hook`, so opening `task.md` (which has a sidecar from
-   `setup.sh`) immediately enables `stile-mode` in the buffer.
-3. The three agent processes wake up, each call `stile open` and
+   `setup.sh`) immediately enables `cotype-mode` in the buffer.
+3. The three agent processes wake up, each call `cotype open` and
    capture the same `base_sha`, then synchronise at a barrier so they
    all hold an identical view.
 4. Post-barrier jitter (0.0 / 0.4 / 0.8 s) cascades the saves: reviewer
    wins `direct`; linter and tester see the now-stale base + disjoint
-   diffs and `stile` invokes `diff3 -m` to merge them.
+   diffs and `cotype` invokes `diff3 -m` to merge them.
 5. After each save, the file's mtime changes; Emacs's auto-revert (via
-   file-notify) reloads the buffer; `stile-mode`'s `after-revert-hook`
+   file-notify) reloads the buffer; `cotype-mode`'s `after-revert-hook`
    re-captures the current base. The user sees the section appear
    *inside* Emacs.
 
@@ -68,9 +68,9 @@ coherent the whole time**.
 | What | Why |
 |---|---|
 | `tmux` | 4-pane layout |
-| `stile` on `PATH` | the actual save protocol (install via `pip install -e cli/`) |
+| `cotype` on `PATH` | the actual save protocol (install via `pip install -e cli/`) |
 | POSIX `diff3` | 3-way merge engine |
-| `emacs` (≥ 27.1) | top-pane viewer; auto-revert + stile-mode |
+| `emacs` (≥ 27.1) | top-pane viewer; auto-revert + cotype-mode |
 
 If `emacs` is absent, `demo.sh` falls back to `bg-viewer.sh` (a plain
 `cat` loop) so the demo still runs — but the recording is much less
@@ -78,13 +78,13 @@ compelling without the real editor in frame.
 
 ## Run live (no recording)
 
-Requires `tmux` and `stile` on `PATH`.
+Requires `tmux` and `cotype` on `PATH`.
 
 ```bash
 cd examples/twitter-demo
 ./demo.sh
 # Inside tmux: detach with Ctrl-B then d
-# Cleanup:  tmux kill-session -t stile-tmux-demo
+# Cleanup:  tmux kill-session -t cotype-tmux-demo
 ```
 
 You should see the 4-pane layout. After a brief pause (all three agents
@@ -166,7 +166,7 @@ The seed:
 Each agent **regenerates the BODY of its own section** when its
 dependency section changes, computing the new content (real Claude via
 `claude --print -p ...`, or canned per-round bodies in fake mode) and
-submitting the entire document to `stile save`. Two safety properties
+submitting the entire document to `cotype save`. Two safety properties
 fall out of this design:
 
 1. **Concurrent saves to different sections merge cleanly.** `tests`
@@ -184,7 +184,7 @@ fall out of this design:
 +---------------------------------------------------+
 |                                                   |
 |              GNU Emacs (your editor)              |
-|              -- stile-mode active --              |
+|              -- cotype-mode active --              |
 |                                                   |
 +--------+--------------+-------------+-------------+
 |  user  | agent:code   | agent:tests | agent:docs  |
@@ -192,12 +192,12 @@ fall out of this design:
 ```
 
 The bottom-left `user` pane runs `bg-puppeteer.py`. Each agent pane
-runs `bg-claude.py <role>`. They share `task.md` through `stile`.
+runs `bg-claude.py <role>`. They share `task.md` through `cotype`.
 
 ### What the recording shows
 
 ```text
-T=0      tmux comes up; emacs opens task.md; stile-mode lights up.
+T=0      tmux comes up; emacs opens task.md; cotype-mode lights up.
 T=1-3s   `code` reacts to the seed `## spec` and saves
              def sum_evens(xs):
                  return sum(x for x in xs if x % 2 == 0)
@@ -213,7 +213,7 @@ T=12s    The `user` pane shows
              "Reject non-integer input with ValueError."
          and the puppeteer pecks that bullet character-by-character
          into Emacs's `## spec` section (visible typing, ~2-3 s),
-         then hits `C-x C-s`. stile-mode routes the save through stile.
+         then hits `C-x C-s`. cotype-mode routes the save through cotype.
          `code` rewrites the body to validate inputs; `tests` grows a
          try/except assertion; `docs` updates the prose.
 
@@ -227,7 +227,7 @@ T=40s+   settled. The user typed; the agents reacted; the document
          evolved -- all live, no errors, no merge artefacts.
 ```
 
-If `claude` is not on `PATH` (or `STILE_DEMO_FAKE_CLAUDE=1`), the
+If `claude` is not on `PATH` (or `COTYPE_DEMO_FAKE_CLAUDE=1`), the
 agents use canned per-round bodies indexed by `rounds_done`; the
 recording is fully deterministic.
 
@@ -238,7 +238,7 @@ cd examples/twitter-demo
 ./demo-claude.sh
 ```
 
-Detach with `C-b d`. Kill with `tmux kill-session -t stile-claude-demo`.
+Detach with `C-b d`. Kill with `tmux kill-session -t cotype-claude-demo`.
 
 ### Render
 
@@ -256,18 +256,18 @@ vhs demo-claude.tape   # produces demo-claude.gif + .mp4
 | `bg-agent.py` | Mock agent for `demo.sh`. Barrier + slot replacement; one save then idle. |
 | `bg-claude.py` | Polling agent for `demo-claude.sh`. Calls `claude` CLI (or canned bodies). Multi-round. |
 | `bg-puppeteer.py` | Drives Emacs via `tmux send-keys` to type user follow-ups in `demo-claude.sh`. |
-| `demo-init.el` | Emacs init that loads `editors/emacs/stile.el` and auto-enables `stile-mode`. |
+| `demo-init.el` | Emacs init that loads `editors/emacs/cotype.el` and auto-enables `cotype-mode`. |
 | `orchestrate.py` | Sequential dispatcher used by `simple-demo.sh`. |
 | `agents/{reviewer,linter,tester}.py` | Single-shot mocks used by the agent-loop example (separate from these demos). |
 
 ## Why the cascade is the visual hook
 
 A demo where every save shows `direct` could be confused with `cat >>
-file`. The `merged` outcome is what makes `stile` legibly *different*:
+file`. The `merged` outcome is what makes `cotype` legibly *different*:
 two real agents each captured their base when the file was empty, both
-saved against that stale base, and `stile` reconciled them via `diff3
+saved against that stale base, and `cotype` reconciled them via `diff3
 -m` with no human in the loop. That is the headline.
 
-If you want a 30s longer cut showing a conflict + `stile resolve
+If you want a 30s longer cut showing a conflict + `cotype resolve
 --use-merged` recovery flow, fork `bg-agent.py` to have one agent
 target the same slot as another. The mechanics are unchanged.

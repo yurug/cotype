@@ -12,7 +12,7 @@ related: [index]
 # External — Index
 
 ## One-liner
-What stile depends on outside Python stdlib, with documented runtime behaviour.
+What cotype depends on outside Python stdlib, with documented runtime behaviour.
 
 ## Files
 

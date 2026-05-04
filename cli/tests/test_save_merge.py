@@ -1,11 +1,11 @@
-"""Tests for stile.commands.save -- 3-way merge (compatible) path."""
+"""Tests for cotype.commands.save -- 3-way merge (compatible) path."""
 from __future__ import annotations
 
 from pathlib import Path
 
-from stile.commands.init import cmd_init
-from stile.commands.open_ import cmd_open
-from stile.commands.save import cmd_save
+from cotype.commands.init import cmd_init
+from cotype.commands.open_ import cmd_open
+from cotype.commands.save import cmd_save
 
 
 def test_T5_P1_stale_compatible_save_merges(tmp_path: Path):

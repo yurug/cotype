@@ -1,7 +1,7 @@
 """Regression tests for examples/demo.
 
 Locks in BOTH demo flavours' direct/merged/merged outcome so a future
-edit to the seed template, the agents, the barrier logic, or `stile
+edit to the seed template, the agents, the barrier logic, or `cotype
 save`'s branching can't silently break the advertised story.
 """
 from __future__ import annotations
@@ -129,7 +129,7 @@ def test_bg_agent_concurrent_yields_direct_then_two_merged(tmp_path: Path):
     # bg-agent.py defaults to a 2 s pre-open delay so the Emacs viewer
     # pane has time to come up before the cascade. The test doesn't need
     # that wait -- skip it.
-    env = {**os.environ, "STILE_DEMO_START_DELAY": "0"}
+    env = {**os.environ, "COTYPE_DEMO_START_DELAY": "0"}
     for role in ("reviewer", "linter", "tester"):
         p = subprocess.Popen(
             [sys.executable, str(BG_AGENT), role],
@@ -202,7 +202,7 @@ def test_bg_claude_multi_round_section_based(tmp_path: Path):
     work = tmp_path / "work"
     subprocess.run([str(SETUP_CLAUDE), str(work)], capture_output=True, check=True)
 
-    env = {**os.environ, "STILE_DEMO_FAKE_CLAUDE": "1"}
+    env = {**os.environ, "COTYPE_DEMO_FAKE_CLAUDE": "1"}
 
     procs = []
     log_paths: dict[str, Path] = {}
@@ -265,7 +265,7 @@ def test_bg_claude_multi_round_section_based(tmp_path: Path):
 
     meta = json.loads(
         subprocess.check_output(
-            ["stile", "open", str(work / "task.md"), "--json"]
+            ["cotype", "open", str(work / "task.md"), "--json"]
         )
     )
     base_path = Path(meta["base_path"])
@@ -277,7 +277,7 @@ def test_bg_claude_multi_round_section_based(tmp_path: Path):
     proposed = bg_claude.replace_section_body(content, "spec", new_spec_body)
     save_r = subprocess.run(
         [
-            "stile", "save", str(work / "task.md"),
+            "cotype", "save", str(work / "task.md"),
             "--base-sha", meta["base_sha"],
             "--actor", "user",
             "--json",

@@ -18,13 +18,13 @@ Set PlaybackSpeed 1.0
 # === Off-screen setup ===
 # Seed the working dir, alias `agents` so the visible command is short.
 Hide
-Type "STILE_DEMO=$(pwd)"
+Type "COTYPE_DEMO=$(pwd)"
 Enter
-Type "./setup.sh /tmp/stile-demo > /dev/null"
+Type "./setup.sh /tmp/cotype-demo > /dev/null"
 Enter
-Type "alias agents='python3 $STILE_DEMO/orchestrate.py task.md'"
+Type "alias agents='python3 $COTYPE_DEMO/orchestrate.py task.md'"
 Enter
-Type "cd /tmp/stile-demo"
+Type "cd /tmp/cotype-demo"
 Enter
 Type "clear"
 Enter

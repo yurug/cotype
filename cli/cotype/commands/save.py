@@ -1,4 +1,4 @@
-"""`stile save FILE --base-sha HASH < proposed`.
+"""`cotype save FILE --base-sha HASH < proposed`.
 
 Outcomes: direct | merged | noop | conflict (and any error).
 
@@ -13,24 +13,24 @@ import datetime as dt
 import json
 import uuid
 
-from stile.atomic_write import atomic_replace
-from stile.errors import (
+from cotype.atomic_write import atomic_replace
+from cotype.errors import (
     ConflictPending,
     InvalidUtf8,
     IoError,
     UnknownBase,
     UnmanagedFile,
 )
-from stile.hash import hash_bytes, hex_part
-from stile.lock import sidecar_lock
-from stile.merge import Clean, Conflict, merge3
-from stile.paths import (
+from cotype.hash import hash_bytes, hex_part
+from cotype.lock import sidecar_lock
+from cotype.merge import Clean, Conflict, merge3
+from cotype.paths import (
     base_path,
     conflict_dir,
     resolve_target,
     sidecar_dir,
 )
-from stile.store import (
+from cotype.store import (
     PendingConflict,
     read_state,
     state_exists,
@@ -54,7 +54,7 @@ def cmd_save(file_arg: str, base_sha: str, actor: str, proposed: bytes) -> dict:
     sidecar = sidecar_dir(file)
     if not state_exists(sidecar):
         raise UnmanagedFile(
-            f"{file} is not managed by stile (run `stile init` or `stile open` first)"
+            f"{file} is not managed by cotype (run `cotype init` or `cotype open` first)"
         )
     # Syntactic validation up front; an invalid HASH cannot name a real base.
     base_hex = hex_part(base_sha)
@@ -116,7 +116,7 @@ def cmd_save(file_arg: str, base_sha: str, actor: str, proposed: bytes) -> dict:
         # Conflict: write the merged-with-markers content directly into FILE
         # so the user sees and edits markers in place (git-style). The sidecar
         # keeps a forensic dump for diagnostics; pending_conflict blocks all
-        # further saves until `stile resolve` clears it.
+        # further saves until `cotype resolve` clears it.
         assert isinstance(result, Conflict)
         cid = uuid.uuid4().hex
         cdir = conflict_dir(sidecar, cid)

@@ -1,20 +1,20 @@
-"""`stile resolve FILE` -- accept the user's hand-edit of FILE.
+"""`cotype resolve FILE` -- accept the user's hand-edit of FILE.
 
 Spec refs: kb/spec/algorithms.md#resolve
 Properties enforced: P4 (cleanup post-resolve), P12.
 
-The flow is git-style: a conflict from `stile save` left FILE containing
+The flow is git-style: a conflict from `cotype save` left FILE containing
 diff3 markers. The user opens FILE in their editor, removes the markers,
-and saves the buffer. Then `stile resolve FILE` validates that no markers
+and saves the buffer. Then `cotype resolve FILE` validates that no markers
 remain, snapshots FILE as the new base, and clears the pending conflict.
 """
 from __future__ import annotations
 
-from stile.errors import InvalidUtf8, IoError, UnmanagedFile, UsageError
-from stile.hash import hash_bytes
-from stile.lock import sidecar_lock
-from stile.paths import resolve_target, sidecar_dir
-from stile.store import read_state, state_exists, store_base, write_state
+from cotype.errors import InvalidUtf8, IoError, UnmanagedFile, UsageError
+from cotype.hash import hash_bytes
+from cotype.lock import sidecar_lock
+from cotype.paths import resolve_target, sidecar_dir
+from cotype.store import read_state, state_exists, store_base, write_state
 
 
 def _has_conflict_markers(content: bytes) -> bool:
@@ -42,7 +42,7 @@ def cmd_resolve(file_arg: str, actor: str = "unknown") -> dict:
     file = resolve_target(file_arg)
     sidecar = sidecar_dir(file)
     if not state_exists(sidecar):
-        raise UnmanagedFile(f"{file} is not managed by stile")
+        raise UnmanagedFile(f"{file} is not managed by cotype")
 
     with sidecar_lock(sidecar):
         st = read_state(sidecar)
@@ -60,7 +60,7 @@ def cmd_resolve(file_arg: str, actor: str = "unknown") -> dict:
         if _has_conflict_markers(content):
             raise UsageError(
                 f"{file} still contains conflict markers; "
-                f"edit them out and re-run `stile resolve`"
+                f"edit them out and re-run `cotype resolve`"
             )
 
         sha = hash_bytes(content)

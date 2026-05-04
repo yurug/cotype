@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Drive an agent through the stile open -> compute -> save loop, once.
+"""Drive an agent through the cotype open -> compute -> save loop, once.
 
 Usage:
     run_agent.py FILE [--agent CMD] [--actor LABEL]
@@ -13,10 +13,10 @@ The default AGENT is `agent_mock.py` next to this script; override with
 Single-shot: this script does one pass and exits. To poll, wrap it:
     while true; do python3 run_agent.py task.md || break; sleep 30; done
 
-Exit codes mirror `stile save`:
+Exit codes mirror `cotype save`:
     0  saved (direct | merged | noop)
     1  conflict (a forensic dump is at the printed path; resolve to continue)
-    *  any other error from `stile`, surfaced verbatim
+    *  any other error from `cotype`, surfaced verbatim
 """
 from __future__ import annotations
 
@@ -44,17 +44,17 @@ def main() -> int:
     p.add_argument("--actor", default="agent:mock")
     args = p.parse_args()
 
-    if not shutil.which("stile"):
-        sys.stderr.write("error: stile not on PATH (try: pip install -e cli/)\n")
+    if not shutil.which("cotype"):
+        sys.stderr.write("error: cotype not on PATH (try: pip install -e cli/)\n")
         return 2
 
     # Auto-init the sidecar if absent so the script is idempotent.
-    rc, out, _ = run(["stile", "status", args.file, "--json"])
+    rc, out, _ = run(["cotype", "status", args.file, "--json"])
     if rc == 0 and json.loads(out).get("status") == "unmanaged":
-        run(["stile", "init", args.file, "--json"])
+        run(["cotype", "init", args.file, "--json"])
 
     # Capture a fresh base; refuse to act if a conflict is already pending.
-    rc, out, err = run(["stile", "open", args.file, "--json"])
+    rc, out, err = run(["cotype", "open", args.file, "--json"])
     if rc != 0:
         sys.stderr.write(err.decode("utf-8", "replace") or out.decode("utf-8", "replace"))
         return rc
@@ -80,7 +80,7 @@ def main() -> int:
     # Save. Exit code 1 means conflict; surface the forensic path.
     rc, out, _ = run(
         [
-            "stile", "save", args.file,
+            "cotype", "save", args.file,
             "--base-sha", meta["base_sha"],
             "--actor", args.actor,
             "--json",
@@ -102,7 +102,7 @@ def main() -> int:
             f"conflict: {result['conflict_id']} (see {result['conflict_path']})\n"
         )
         return 1
-    # Other error envelopes from stile.
+    # Other error envelopes from cotype.
     sys.stderr.write(out.decode("utf-8", "replace"))
     return rc if rc != 0 else 6
 

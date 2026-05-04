@@ -29,7 +29,7 @@ Where:
 - `OLDFILE` = common ancestor.
 - `YOURFILE` = the other side.
 
-For `stile`:
+For `cotype`:
 - MYFILE   = `proposed`  (the actor's submission)
 - OLDFILE  = `base`      (the snapshot the actor started from)
 - YOURFILE = `current`   (what is on disk now)
@@ -38,7 +38,7 @@ This matches SPEC §8: `diff3 proposed base current`.
 
 ## Exit codes (GNU and POSIX agree)
 
-| Exit | Meaning                                          | stile interpretation |
+| Exit | Meaning                                          | cotype interpretation |
 |------|--------------------------------------------------|----------------------|
 | 0    | Clean merge, no overlap                          | `Clean(stdout)`      |
 | 1    | Overlap; output contains conflict markers        | `Conflict(stdout)`   |
@@ -60,7 +60,7 @@ current lines
 >>>>>>> YOURFILE
 ```
 
-`stile` writes this verbatim to `conflicts/<id>/merged`.
+`cotype` writes this verbatim to `conflicts/<id>/merged`.
 
 ## Request budget
 
@@ -94,7 +94,7 @@ proposed: a\nb\nc\nd\nE\n   # line 5
 ```
 diff3 emits a clean merge (exit 0).
 
-This matches SPEC §8's wording (Clean is **SHOULD** for non-overlapping edits, not MUST). `stile` accepts diff3's conservative grouping; we do not try to be smarter.
+This matches SPEC §8's wording (Clean is **SHOULD** for non-overlapping edits, not MUST). `cotype` accepts diff3's conservative grouping; we do not try to be smarter.
 
 ## Failure modes
 

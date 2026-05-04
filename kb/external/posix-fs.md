@@ -20,7 +20,7 @@ What `os.replace`, `os.fsync`, and `fcntl.flock` actually guarantee — and wher
 - Different-filesystem rename is NOT atomic and falls back to copy+unlink (Python's `os.rename` errors `EXDEV`; `shutil.move` would copy).
 - That's why our temp file must live in `<sidecar>/tmp/`, which is co-located with `FILE` (sidecar lives next to FILE).
 
-Implication for stile:
+Implication for cotype:
 ```python
 tmp_path = Path(sidecar) / "tmp" / f"atomic-{os.getpid()}-{uuid.uuid4().hex}"
 # ... write tmp_path ...

@@ -11,22 +11,42 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
 
 Two coupled releases under the v0.2 tag-namespace:
 
-- `stile` (Python CLI), tagged **`v0.2.0`**.
-- `stile.el` (Emacs minor mode), tagged **`emacs-v0.2.0`**.
+- `cotype` (Python CLI), tagged **`v0.2.0`**.
+- `cotype.el` (Emacs minor mode), tagged **`emacs-v0.2.0`**.
+
+### Changed (BREAKING) — renamed from `stile` to `cotype`
+
+The PyPI name `stile` was already taken; the project has been renamed
+to **cotype** (short for "co-typing": multiple actors typing into the
+same file). This is a name change only; semantics, CLI surface, and
+on-disk format are unchanged apart from the sidecar directory:
+
+- Binary: `stile <cmd>` → `cotype <cmd>`.
+- Python package: `import stile` → `import cotype`.
+- Sidecar directory: `.<basename>.stile/` → `.<basename>.cotype/`.
+- Emacs file/mode: `stile.el` / `stile-mode` → `cotype.el` / `cotype-mode`;
+  every `stile-*` interactive command renamed to `cotype-*`.
+- Repository: `github.com/yurug/stile` → `github.com/yurug/cotype`
+  (GitHub redirects the old URL automatically).
+
+Migration for an existing `.<basename>.stile/` sidecar: rename it to
+`.<basename>.cotype/`. Or if you prefer a clean start, delete the old
+sidecar and run `cotype init FILE` again — the file content itself is
+untouched.
 
 ### Changed (BREAKING) — inline conflict resolution
 
 The conflict UX now follows the git-merge pattern: instead of leaving FILE
 unchanged and asking the user to find and hand-edit the merged file in a
-hidden sidecar directory, `stile save` rewrites FILE in place with
+hidden sidecar directory, `cotype save` rewrites FILE in place with
 `<<<<<<<` / `=======` / `>>>>>>>` diff3 markers, and the user resolves
 inline.
 
-- `stile save` on conflict: FILE now contains the diff3 marker output;
+- `cotype save` on conflict: FILE now contains the diff3 marker output;
   `state.last_known_sha` becomes the hash of that content; the `conflict`
   JSON envelope gains a `markers_sha` field. Forensic dump under
   `<sidecar>/conflicts/<id>/{base,current,proposed,merged}` is unchanged.
-- `stile resolve FILE` is the new flow: reads FILE off disk, refuses if
+- `cotype resolve FILE` is the new flow: reads FILE off disk, refuses if
   diff3 markers remain, otherwise snapshots and clears the pending
   conflict. The old `--conflict-id ID < bytes` and `--use-merged` forms
   are removed; `resolve` takes no flags besides `--actor` / `--json`.
@@ -38,20 +58,20 @@ inline.
   `ConflictPending` until the markers are gone and `resolve` runs.
 
 Migration: callers using the old `--use-merged` or `--conflict-id` forms
-must switch to the new flow (edit FILE, then `stile resolve FILE`).
+must switch to the new flow (edit FILE, then `cotype resolve FILE`).
 
-### Added — `stile.el`
+### Added — `cotype.el`
 
-- `M-x stile-resolve` (replaces `stile-resolve-use-merged`). On a save's
+- `M-x cotype-resolve` (replaces `cotype-resolve-use-merged`). On a save's
   conflict reply, the buffer is reverted to show the markers in place;
-  after the user edits them out, `stile-resolve` flushes the buffer to
+  after the user edits them out, `cotype-resolve` flushes the buffer to
   disk and clears the pending conflict.
-- Suppression of Emacs's modtime prompts inside stile-mode buffers:
+- Suppression of Emacs's modtime prompts inside cotype-mode buffers:
   `ask-user-about-supersession-threat` ("FILE has changed since visited;
   really edit?") and `basic-save-buffer`'s ("Save anyway?") are both
-  silenced by refreshing visited-file-modtime — stile already
+  silenced by refreshing visited-file-modtime — cotype already
   coordinates concurrent saves, so the safety nets are pure friction.
-- `stile--ensure-auto-revert` re-arms `auto-revert-mode` after every
+- `cotype--ensure-auto-revert` re-arms `auto-revert-mode` after every
   programmatic revert; Emacs's `preserve-modes` only protects the major
   mode plus a hand-coded list of minors, so without this auto-revert
   was silently dropped on every conflict-induced revert.
@@ -59,7 +79,7 @@ must switch to the new flow (edit FILE, then `stile resolve FILE`).
 ### Added — `examples/headless-agents.sh`
 
 A new robust headless harness (referenced from `README.md`) that spawns
-N Claude agents on a stile-managed file:
+N Claude agents on a cotype-managed file:
 
 - Section-aware splice: parses Claude's full-file output, extracts only
   the agent's own `## agent:<role>` body, and splices it into the bytes
@@ -77,7 +97,7 @@ N Claude agents on a stile-managed file:
 
 A new VHS-recordable brainstorming demo: three personas (cook,
 logistics, ux-designer) plus a note-taker collaborate with a simulated
-user on a stile-managed `brainstorm.md` to design a school crêpe stand
+user on a cotype-managed `brainstorm.md` to design a school crêpe stand
 serving 300 in 2 hours. Three-pane tmux layout (Emacs viewer up top,
 puppeteer + agents log at the bottom), three rounds of user input, then
 agents idle on the close.
@@ -86,10 +106,10 @@ agents idle on the close.
 
 First public release. Two coupled releases under one tag-namespace:
 
-- `stile` (Python CLI), tagged **`v0.1.0`**.
-- `stile.el` (Emacs minor mode), tagged **`emacs-v0.1.0`**.
+- `cotype` (Python CLI), tagged **`v0.1.0`**.
+- `cotype.el` (Emacs minor mode), tagged **`emacs-v0.1.0`**.
 
-### Added — `stile` CLI (Python)
+### Added — `cotype` CLI (Python)
 
 - Six commands: `init`, `open`, `save`, `status`, `resolve`, `cat-base`.
   - `save` returns one of `direct`, `merged`, `noop`, or `conflict`.
@@ -110,19 +130,19 @@ First public release. Two coupled releases under one tag-namespace:
   atomic-visibility smoke test.
 - CI matrix: GitHub Actions, Linux + macOS × Python 3.11/3.12.
 
-### Added — `stile.el` (Emacs)
+### Added — `cotype.el` (Emacs)
 
-- `stile-mode` minor mode that routes `C-x C-s` through `stile save`.
-- On activation, runs `stile open` and reloads the buffer from the
-  returned `base_path` so the buffer matches what stile believes the
+- `cotype-mode` minor mode that routes `C-x C-s` through `cotype save`.
+- On activation, runs `cotype open` and reloads the buffer from the
+  returned `base_path` so the buffer matches what cotype believes the
   base is (closes the SPEC's "forbidden protocol" race window).
 - Auto-revert + buffer-local `after-revert-hook` to refresh the
   captured `base_sha` whenever the file changes on disk (toggleable
-  via `stile-auto-revert`, default `t`).
-- Interactive commands: `stile-init`, `stile-mode`, `stile-status`,
-  `stile-resolve-use-merged`, `stile-maybe-enable`.
+  via `cotype-auto-revert`, default `t`).
+- Interactive commands: `cotype-init`, `cotype-mode`, `cotype-status`,
+  `cotype-resolve-use-merged`, `cotype-maybe-enable`.
 - Conflict path: visits `<sidecar>/conflicts/<id>/merged` in another
-  window; user edits and runs `M-x stile-resolve-use-merged` from the
+  window; user edits and runs `M-x cotype-resolve-use-merged` from the
   original buffer to apply.
 
 ### Documentation
@@ -147,6 +167,6 @@ First public release. Two coupled releases under one tag-namespace:
 - No event sourcing, no CRDT, no semantic edits, no multi-file
   transactions.
 
-[Unreleased]: https://github.com/yurug/stile/compare/v0.2.0...HEAD
-[0.2.0]:      https://github.com/yurug/stile/releases/tag/v0.2.0
-[0.1.0]:      https://github.com/yurug/stile/releases/tag/v0.1.0
+[Unreleased]: https://github.com/yurug/cotype/compare/v0.2.0...HEAD
+[0.2.0]:      https://github.com/yurug/cotype/releases/tag/v0.2.0
+[0.1.0]:      https://github.com/yurug/cotype/releases/tag/v0.1.0

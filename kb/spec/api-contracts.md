@@ -1,7 +1,7 @@
 ---
 id: spec-api-contracts
 type: spec
-summary: CLI inputs and JSON output shapes for every stile command.
+summary: CLI inputs and JSON output shapes for every cotype command.
 domain: spec
 last-updated: 2026-05-03
 depends-on: [spec-data-model, spec-error-taxonomy]
@@ -22,15 +22,15 @@ CLI surface only. Internal function signatures live in `architecture/overview.md
 - `--json` — emit a JSON object on stdout (errors too); without it, emit a one-line human summary.
 - `--actor STR` — opaque label, default `unknown`. Stored in conflict `meta.json`. Must not be run through a shell.
 
-## `stile init FILE [--json]`
+## `cotype init FILE [--json]`
 
 Output (success, `--json`):
 ```json
-{ "status": "ok", "file": "file.txt", "sha": "sha256:...", "sidecar": ".file.txt.stile" }
+{ "status": "ok", "file": "file.txt", "sha": "sha256:...", "sidecar": ".file.txt.cotype" }
 ```
 Exit: 0 on success. See error taxonomy for all reject paths.
 
-## `stile open FILE [--json]`
+## `cotype open FILE [--json]`
 
 Output (success, `--json`, no pending conflict):
 ```json
@@ -38,7 +38,7 @@ Output (success, `--json`, no pending conflict):
   "status": "ok",
   "file": "file.txt",
   "base_sha": "sha256:...",
-  "base_path": ".file.txt.stile/bases/<hex>",
+  "base_path": ".file.txt.cotype/bases/<hex>",
   "conflicted": false
 }
 ```
@@ -48,14 +48,14 @@ Output when a conflict is pending:
   "status": "ok",
   "file": "file.txt",
   "base_sha": "sha256:...",
-  "base_path": ".file.txt.stile/bases/<hex>",
+  "base_path": ".file.txt.cotype/bases/<hex>",
   "conflicted": true,
-  "pending_conflict": { "id": "...", "path": ".file.txt.stile/conflicts/<id>" }
+  "pending_conflict": { "id": "...", "path": ".file.txt.cotype/conflicts/<id>" }
 }
 ```
 Exit: 0.
 
-## `stile save FILE --base-sha HASH [--actor ACTOR] [--json] < PROPOSED`
+## `cotype save FILE --base-sha HASH [--actor ACTOR] [--json] < PROPOSED`
 
 Success:
 ```json
@@ -66,7 +66,7 @@ Conflict:
 {
   "status": "conflict",
   "conflict_id": "...",
-  "conflict_path": ".file.txt.stile/conflicts/<id>",
+  "conflict_path": ".file.txt.cotype/conflicts/<id>",
   "base_sha": "sha256:...",
   "current_sha": "sha256:...",
   "proposed_sha": "sha256:...",
@@ -77,7 +77,7 @@ On conflict, FILE is rewritten in place with the diff3 marker output (its SHA-25
 
 Exit: 0 saved · 1 conflict · 4 unknown base · 5 pending conflict · 7 merge tool error · 3 corrupt/unmanaged · 2 usage · 6 io.
 
-## `stile status FILE [--json]`
+## `cotype status FILE [--json]`
 
 Clean:
 ```json
@@ -89,7 +89,7 @@ Conflicted:
   "status": "conflicted",
   "file": "file.txt",
   "current_sha": "sha256:...",
-  "pending_conflict": { "id": "...", "path": ".file.txt.stile/conflicts/<id>" }
+  "pending_conflict": { "id": "...", "path": ".file.txt.cotype/conflicts/<id>" }
 }
 ```
 Unmanaged:
@@ -98,7 +98,7 @@ Unmanaged:
 ```
 Exit: 0 in all three states. (`status` is reporting; not a failure.)
 
-## `stile resolve FILE [--actor ACTOR] [--json]`
+## `cotype resolve FILE [--actor ACTOR] [--json]`
 
 Reads FILE off disk and accepts it as the resolution: snapshots the bytes as a new base, sets `state.last_known_sha`, and clears `state.pending_conflict`. Refuses with `UsageError` if a `<<<<<<< ` opener and a `>>>>>>> ` closer line are both present (diff3 markers still in place — the user has not finished resolving). Refuses with `UsageError` when no conflict is pending. Reads no stdin.
 
@@ -109,7 +109,7 @@ Output:
 ```
 Exit: 0 success · 2 usage (no pending conflict, markers still present) · 3 corrupt/unmanaged/invalid-utf8 · 6 io.
 
-## `stile cat-base FILE [--base-sha HASH]`
+## `cotype cat-base FILE [--base-sha HASH]`
 
 Read-only utility: writes the bytes of a base snapshot to stdout. With no
 `--base-sha`, uses `state.last_known_sha` (the most recently captured base).
@@ -124,10 +124,10 @@ Exit: 0 success · 3 unmanaged · 4 unknown base · 6 io.
 
 Typical use (agent shell pipeline):
 ```bash
-meta=$(stile open task.md --json)
+meta=$(cotype open task.md --json)
 sha=$(printf '%s' "$meta" | jq -r .base_sha)
-stile cat-base task.md --base-sha "$sha" | my-agent | \
-  stile save task.md --base-sha "$sha" --actor agent:reviewer
+cotype cat-base task.md --base-sha "$sha" | my-agent | \
+  cotype save task.md --base-sha "$sha" --actor agent:reviewer
 ```
 
 ## Error envelope

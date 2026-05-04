@@ -1,16 +1,16 @@
-"""Tests for stile.lock."""
+"""Tests for cotype.lock."""
 from __future__ import annotations
 
 import threading
 import time
 from pathlib import Path
 
-from stile.lock import sidecar_lock
-from stile.store import ensure_layout
+from cotype.lock import sidecar_lock
+from cotype.store import ensure_layout
 
 
 def test_P6_lock_serialises_threads(tmp_path: Path):
-    sidecar = tmp_path / ".file.txt.stile"
+    sidecar = tmp_path / ".file.txt.cotype"
     ensure_layout(sidecar)
     timeline: list[tuple[str, str]] = []
 
@@ -36,7 +36,7 @@ def test_P6_lock_serialises_threads(tmp_path: Path):
 
 
 def test_lock_released_after_exception(tmp_path: Path):
-    sidecar = tmp_path / ".file.txt.stile"
+    sidecar = tmp_path / ".file.txt.cotype"
     ensure_layout(sidecar)
     try:
         with sidecar_lock(sidecar):

@@ -1,6 +1,6 @@
-# stile crêpe-stand brainstorming demo -- 3 panes, real Claude calls.
+# cotype crêpe-stand brainstorming demo -- 3 panes, real Claude calls.
 #
-# Top pane: Emacs viewing brainstorm.md (stile-mode + auto-revert).
+# Top pane: Emacs viewing brainstorm.md (cotype-mode + auto-revert).
 # Bottom-left: puppeteer that types in the `## user' section across
 # three rounds (challenge → focusing question → "we're done").
 # Bottom-right: headless-agents.sh running cook, logistics, ux-designer,
@@ -50,5 +50,5 @@ Hide
 Ctrl+B
 Type "d"
 Sleep 300ms
-Type "tmux kill-session -t stile-crepe-demo 2>/dev/null"
+Type "tmux kill-session -t cotype-crepe-demo 2>/dev/null"
 Enter

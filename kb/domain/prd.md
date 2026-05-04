@@ -1,7 +1,7 @@
 ---
 id: prd
 type: spec
-summary: Authoritative product requirements for stile -- what it is, who uses it, what it must and must not do.
+summary: Authoritative product requirements for cotype -- what it is, who uses it, what it must and must not do.
 domain: product
 last-updated: 2026-05-03
 depends-on: [glossary]
@@ -9,13 +9,13 @@ refines: []
 related: [spec-algorithms, properties-functional]
 ---
 
-# PRD: stile
+# PRD: cotype
 
 ## 1. Summary
 
-`stile` is a small, editor-agnostic command-line tool that prevents lost updates when a text file is modified concurrently by a human and one or more processes — typically AI agents.
+`cotype` is a small, editor-agnostic command-line tool that prevents lost updates when a text file is modified concurrently by a human and one or more processes — typically AI agents.
 
-The primary use case is a **shared text file used as the communication medium between a user and one or more agents, in place of a sequential chat**. The user writes; agents read and edit the file in place to respond or to do work; `stile` keeps every actor's view consistent. Disjoint edits auto-merge. Overlapping edits surface as explicit conflicts that the user resolves. There is no chat transcript — the file *is* the workspace.
+The primary use case is a **shared text file used as the communication medium between a user and one or more agents, in place of a sequential chat**. The user writes; agents read and edit the file in place to respond or to do work; `cotype` keeps every actor's view consistent. Disjoint edits auto-merge. Overlapping edits surface as explicit conflicts that the user resolves. There is no chat transcript — the file *is* the workspace.
 
 The product is intentionally simple:
 
@@ -26,7 +26,7 @@ merge = use 3-way merge when the file changed meanwhile
 fail  = make conflicts explicit, never overwrite silently
 ```
 
-`stile` does not replace editors, Git, build systems, or CRDT collaboration tools. It gives any editor or process a safe synchronization point around ordinary text files.
+`cotype` does not replace editors, Git, build systems, or CRDT collaboration tools. It gives any editor or process a safe synchronization point around ordinary text files.
 
 ## 2. Product principle
 
@@ -34,8 +34,8 @@ The core rule is:
 
 ```text
 No actor writes the target file directly during managed operation.
-Actors submit candidate file contents to stile.
-stile either writes atomically, merges safely, or rejects with a conflict.
+Actors submit candidate file contents to cotype.
+cotype either writes atomically, merges safely, or rejects with a conflict.
 ```
 
 This is the KISS version. The event-log/reducer design is deferred to a future version.
@@ -62,7 +62,7 @@ There is no tiny, universal `safe save` protocol for a normal local text file.
 
 ## 4. Goals
 
-`stile` must provide:
+`cotype` must provide:
 
 1. Safe concurrent saves for a single regular text file.
 2. Editor-agnostic integration through CLI commands and stdin/stdout.
@@ -74,7 +74,7 @@ There is no tiny, universal `safe save` protocol for a normal local text file.
 
 ## 5. Non-goals
 
-`stile` must not implement:
+`cotype` must not implement:
 
 - Network synchronization.
 - Multi-user real-time collaboration.
@@ -90,7 +90,7 @@ There is no tiny, universal `safe save` protocol for a normal local text file.
 
 ### Human editor user
 
-A user edits `file.txt` in Emacs, Vim, VS Code, or another editor. The editor integration calls `stile open` when loading and `stile save` when saving.
+A user edits `file.txt` in Emacs, Vim, VS Code, or another editor. The editor integration calls `cotype open` when loading and `cotype save` when saving.
 
 ### AI agent
 
@@ -112,49 +112,49 @@ A user and one or more agents collaborate by editing a single text file together
 
 ```text
 T0  user opens task.md, writes a question.
-T1  agent A runs `stile open task.md`, reads from base_path, computes a reply,
-    writes it inline under the question, runs `stile save`. mode = direct.
-T2  user reads the agent's reply, types a follow-up, saves through stile.
+T1  agent A runs `cotype open task.md`, reads from base_path, computes a reply,
+    writes it inline under the question, runs `cotype save`. mode = direct.
+T2  user reads the agent's reply, types a follow-up, saves through cotype.
     mode = direct.
 T3  agent B (a different worker) is also running. It opens task.md, edits a
     different section, saves. The user's edit and agent B's edit don't
     overlap -- mode = merged.
-T4  user and agent A both edit the same section at once. stile refuses to
+T4  user and agent A both edit the same section at once. cotype refuses to
     silently pick a winner. mode = conflict; FILE is rewritten with diff3
-    markers; the user edits them out and runs `stile resolve` to clear
+    markers; the user edits them out and runs `cotype resolve` to clear
     the pending state. Agents idle while the conflict is pending.
 ```
 
-The file is a persistent, version-controllable workspace that the user can read, edit, and redirect at any moment. Multiple agents can act in parallel without a central UI. `stile` is what makes the whole pattern safe.
+The file is a persistent, version-controllable workspace that the user can read, edit, and redirect at any moment. Multiple agents can act in parallel without a central UI. `cotype` is what makes the whole pattern safe.
 
 ### US1: Direct save when no one else changed the file
 
-Given `file.txt` contains `A`, and the editor opened base `A`, when the editor saves `C`, `stile` writes `C` atomically.
+Given `file.txt` contains `A`, and the editor opened base `A`, when the editor saves `C`, `cotype` writes `C` atomically.
 
 ### US2: Auto-merge when another actor changed disjoint lines
 
-Given an editor opened base `A`, and a process saved `B`, when the editor saves `C`, `stile` computes a 3-way merge of `(base=A, current=B, proposed=C)`. If the edits are compatible, it writes the merged result.
+Given an editor opened base `A`, and a process saved `B`, when the editor saves `C`, `cotype` computes a 3-way merge of `(base=A, current=B, proposed=C)`. If the edits are compatible, it writes the merged result.
 
 ### US3: Conflict instead of lost update
 
-Given an editor opened base `A`, and a process saved `B`, when the editor saves conflicting `C`, `stile` must not silently choose between `B` and `C`. It rewrites `file.txt` with diff3 markers spanning both versions, sets a pending-conflict state, and writes forensic artifacts. Subsequent saves are rejected with `ConflictPending` until the user edits out the markers and runs `stile resolve`.
+Given an editor opened base `A`, and a process saved `B`, when the editor saves conflicting `C`, `cotype` must not silently choose between `B` and `C`. It rewrites `file.txt` with diff3 markers spanning both versions, sets a pending-conflict state, and writes forensic artifacts. Subsequent saves are rejected with `ConflictPending` until the user edits out the markers and runs `cotype resolve`.
 
 ### US4: Same protocol for humans and processes
 
-A process must use exactly the same `open` and `save` flow as an editor. There is no privileged writer other than `stile` itself.
+A process must use exactly the same `open` and `save` flow as an editor. There is no privileged writer other than `cotype` itself.
 
 ## 8. CLI UX
 
 ### Initialize
 
 ```bash
-stile init file.txt
+cotype init file.txt
 ```
 
 Creates sidecar storage:
 
 ```text
-.file.txt.stile/
+.file.txt.cotype/
   lock
   state.json
   bases/
@@ -165,7 +165,7 @@ Creates sidecar storage:
 ### Open
 
 ```bash
-stile open file.txt --json
+cotype open file.txt --json
 ```
 
 Captures the current file content as a base snapshot and returns metadata:
@@ -175,7 +175,7 @@ Captures the current file content as a base snapshot and returns metadata:
   "status": "ok",
   "file": "file.txt",
   "base_sha": "sha256:...",
-  "base_path": ".file.txt.stile/bases/...",
+  "base_path": ".file.txt.cotype/bases/...",
   "conflicted": false
 }
 ```
@@ -185,7 +185,7 @@ Safe editor integrations should load the buffer from `base_path`, not by separat
 ### Save
 
 ```bash
-stile save file.txt --base-sha sha256:... --actor emacs < new-content.txt
+cotype save file.txt --base-sha sha256:... --actor emacs < new-content.txt
 ```
 
 Possible results:
@@ -200,7 +200,7 @@ Possible results:
 ### Status
 
 ```bash
-stile status file.txt --json
+cotype status file.txt --json
 ```
 
 Returns whether the file is managed, its current hash, and whether a conflict is pending.
@@ -208,13 +208,13 @@ Returns whether the file is managed, its current hash, and whether a conflict is
 ### Resolve conflict
 
 ```bash
-stile resolve file.txt --actor user
+cotype resolve file.txt --actor user
 ```
 
-When `stile save` produces a conflict, `file.txt` is rewritten in place
+When `cotype save` produces a conflict, `file.txt` is rewritten in place
 with diff3 markers (`<<<<<<<` / `=======` / `>>>>>>>`). The user opens
 `file.txt` in their editor, removes the markers, saves the buffer, and
-runs `stile resolve file.txt` to clear the pending conflict. `resolve`
+runs `cotype resolve file.txt` to clear the pending conflict. `resolve`
 refuses if any markers are still present.
 
 ## 9. Editor integration contract
@@ -223,12 +223,12 @@ A correct editor integration does this:
 
 ```text
 on file load:
-  run stile open FILE --json
+  run cotype open FILE --json
   load buffer from returned base_path
   remember base_sha
 
 on save:
-  send current buffer to stile save FILE --base-sha BASE_SHA --actor EDITOR
+  send current buffer to cotype save FILE --base-sha BASE_SHA --actor EDITOR
   if status = saved:
     reload buffer from FILE or use returned content if provided
     set BASE_SHA to returned sha
@@ -238,20 +238,20 @@ on save:
     keep buffer dirty or enter conflict workflow
 ```
 
-The editor must not write `FILE` directly while the file is under `stile` management.
+The editor must not write `FILE` directly while the file is under `cotype` management.
 
 ## 10. Process integration contract
 
 A process that wants to modify `file.txt` does this:
 
 ```bash
-meta=$(stile open file.txt --json)
+meta=$(cotype open file.txt --json)
 base_sha=$(printf '%s' "$meta" | jq -r .base_sha)
 base_path=$(printf '%s' "$meta" | jq -r .base_path)
 
 my-generator < "$base_path" > /tmp/new-file.txt
 
-stile save file.txt \
+cotype save file.txt \
   --base-sha "$base_sha" \
   --actor my-generator \
   < /tmp/new-file.txt
@@ -263,7 +263,7 @@ The process must not use direct writes to `file.txt`.
 
 ### I1: No silent stale overwrite
 
-If the current file hash differs from the caller's base hash, `stile save` must either perform a successful 3-way merge or report a conflict. It must not directly replace the current file with the proposed content.
+If the current file hash differs from the caller's base hash, `cotype save` must either perform a successful 3-way merge or report a conflict. It must not directly replace the current file with the proposed content.
 
 ### I2: Atomic visibility
 
@@ -271,11 +271,11 @@ Readers of `file.txt` must observe either the old complete file or the new compl
 
 ### I3: Sidecar snapshots are auxiliary
 
-Base snapshots enable 3-way merge. The target file remains a normal file. `stile` is not an event-sourced system.
+Base snapshots enable 3-way merge. The target file remains a normal file. `cotype` is not an event-sourced system.
 
 ### I4: Conflicts are explicit
 
-On conflict, `stile save` rewrites `file.txt` with diff3 markers (`<<<<<<<` / `=======` / `>>>>>>>`) — both sides preserved verbatim — and records a pending-conflict state in the sidecar. Until the user edits out the markers and runs `stile resolve`, every subsequent `stile save` is rejected with `ConflictPending`. A forensic copy of the three sides (`base`, `current`, `proposed`, `merged`) is kept under `<sidecar>/conflicts/<id>/` for diagnostics.
+On conflict, `cotype save` rewrites `file.txt` with diff3 markers (`<<<<<<<` / `=======` / `>>>>>>>`) — both sides preserved verbatim — and records a pending-conflict state in the sidecar. Until the user edits out the markers and runs `cotype resolve`, every subsequent `cotype save` is rejected with `ConflictPending`. A forensic copy of the three sides (`base`, `current`, `proposed`, `merged`) is kept under `<sidecar>/conflicts/<id>/` for diagnostics.
 
 ## 12. MVP scope
 
@@ -315,7 +315,7 @@ Given base `A`, current file `B`, and proposed `C` with overlapping incompatible
 
 ### AC4: No partial writes
 
-A test that repeatedly reads the target file while `stile save` writes large content must never observe truncated or mixed content.
+A test that repeatedly reads the target file while `cotype save` writes large content must never observe truncated or mixed content.
 
 ### AC5: Unknown base rejection
 
@@ -346,7 +346,7 @@ Possible future versions:
 The simplest accurate name is:
 
 ```text
-stile: universal safe-save for concurrent text files
+cotype: universal safe-save for concurrent text files
 ```
 
 The tool succeeds if it is boring, predictable, and small.

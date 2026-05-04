@@ -1,7 +1,7 @@
 ---
 id: properties-functional
 type: constraint
-summary: P1..P15 — functional invariants stile must always uphold, with violation examples.
+summary: P1..P15 — functional invariants cotype must always uphold, with violation examples.
 domain: properties
 last-updated: 2026-05-03
 depends-on: [spec-algorithms, spec-data-model]
@@ -27,7 +27,7 @@ Each property has: **ID**, **statement**, **violation example**, **why**, **test
 
 **Statement.** If `H(read(FILE)) != base_sha`, then `save` must NOT replace `FILE` with `proposed`. It must either produce a clean merge or report a conflict.
 
-**Violation.** A user opens `A`, the file becomes `B` on disk, the user submits `C` overlapping `B`, and stile writes `C`. `B` is lost.
+**Violation.** A user opens `A`, the file becomes `B` on disk, the user submits `C` overlapping `B`, and cotype writes `C`. `B` is lost.
 
 **Why.** Core PRD invariant I1; the entire reason this tool exists.
 
@@ -53,7 +53,7 @@ Each property has: **ID**, **statement**, **violation example**, **why**, **test
 
 **Violation.** Implementation reads `FILE` content from `bases/` instead of `FILE` itself.
 
-**Why.** I3; preserves "boring file" semantics for non-stile readers.
+**Why.** I3; preserves "boring file" semantics for non-cotype readers.
 
 **Test.** Manual: rm sidecar; FILE still readable, contents unchanged.
 
@@ -101,7 +101,7 @@ Each property has: **ID**, **statement**, **violation example**, **why**, **test
 
 **Violation.** Saving over a pending conflict silently overwrites the markers and loses one side of the conflict.
 
-**Why.** Forces explicit resolution via `stile resolve` after the user has edited out the markers; preserves both sides until then.
+**Why.** Forces explicit resolution via `cotype resolve` after the user has edited out the markers; preserves both sides until then.
 
 **Test.** T7 — after T6, attempt `save`; assert exit 5 and FILE bytes unchanged.
 

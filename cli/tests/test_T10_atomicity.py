@@ -9,10 +9,10 @@ from __future__ import annotations
 import threading
 from pathlib import Path
 
-from stile.commands.init import cmd_init
-from stile.commands.open_ import cmd_open
-from stile.commands.save import cmd_save
-from stile.hash import hash_bytes
+from cotype.commands.init import cmd_init
+from cotype.commands.open_ import cmd_open
+from cotype.commands.save import cmd_save
+from cotype.hash import hash_bytes
 
 
 def test_T10_P2_atomic_visibility(tmp_path: Path):
@@ -28,7 +28,7 @@ def test_T10_P2_atomic_visibility(tmp_path: Path):
     errors: list[tuple[str, BaseException]] = []
 
     def reader():
-        # Read directly; do NOT hold any stile lock. The point is to verify
+        # Read directly; do NOT hold any cotype lock. The point is to verify
         # external readers (build systems, watchers, cat) see whole files.
         while not stop.is_set():
             try:

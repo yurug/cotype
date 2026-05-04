@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Multi-pane tmux demo: live "editor view" of task.md on top, three
-# real agent processes at the bottom each running stile open / save in
+# real agent processes at the bottom each running cotype open / save in
 # parallel. Run live in your terminal to preview, or record with
 # `vhs demo.tape`.
 #
@@ -17,11 +17,11 @@
 set -euo pipefail
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-WORK="${1:-/tmp/stile-demo}"
-SESSION="${STILE_DEMO_SESSION:-stile-tmux-demo}"
+WORK="${1:-/tmp/cotype-demo}"
+SESSION="${COTYPE_DEMO_SESSION:-cotype-tmux-demo}"
 
 command -v tmux >/dev/null || { echo "tmux not on PATH" >&2; exit 2; }
-command -v stile >/dev/null || { echo "stile not on PATH (try: pip install -e cli/)" >&2; exit 2; }
+command -v cotype >/dev/null || { echo "cotype not on PATH (try: pip install -e cli/)" >&2; exit 2; }
 
 tmux kill-session -t "$SESSION" 2>/dev/null || true
 "$DIR/setup.sh" "$WORK" >/dev/null
@@ -41,7 +41,7 @@ agent_b=$(tmux split-window -h -t "$agent_a" -l 120 -c "$WORK" \
 agent_c=$(tmux split-window -h -t "$agent_b" -l 60  -c "$WORK" \
     -P -F "#{pane_id}")
 
-# Pick the viewer: real Emacs running `stile-mode' if available (matches
+# Pick the viewer: real Emacs running `cotype-mode' if available (matches
 # what the project actually ships), else the plain `bg-viewer.sh' loop.
 if command -v emacs >/dev/null 2>&1; then
     VIEWER_CMD="exec emacs -nw -Q -l '$DIR/demo-init.el' task.md"

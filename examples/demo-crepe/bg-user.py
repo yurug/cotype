@@ -7,11 +7,11 @@ into the `## user' section of brainstorm.md across three rounds:
   3. The "we're done, thanks" closer.
 
 Each round:
-  - `M-x stile-demo-position-for-user' to land point on a fresh blank
+  - `M-x cotype-demo-position-for-user' to land point on a fresh blank
     line in the user section (defined in demo-init.el).
   - `tmux send-keys -l <ch>' per character with a small inter-key
     delay so the typing is visibly human in the recording.
-  - `C-x C-s' to save through stile-mode.
+  - `C-x C-s' to save through cotype-mode.
 
 stdout doubles as the visible content of the user pane.
 
@@ -63,7 +63,7 @@ def type_human(pane: str, text: str, delay: float = KEY_DELAY) -> None:
 
 
 def add_user_message(pane: str, text: str) -> None:
-    send(pane, "M-x", "stile-demo-position-for-user", "Enter")
+    send(pane, "M-x", "cotype-demo-position-for-user", "Enter")
     time.sleep(PRE_TYPE_PAUSE)
     type_human(pane, text)
     time.sleep(0.2)
@@ -88,7 +88,7 @@ def main() -> int:
 
     header(f"user (-> {pane})")
 
-    # Wait for Emacs to come up and stile-mode to capture its base.
+    # Wait for Emacs to come up and cotype-mode to capture its base.
     log("· waiting for Emacs to settle…")
     time.sleep(4)
 

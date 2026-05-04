@@ -1,12 +1,12 @@
-"""Tests for stile.paths."""
+"""Tests for cotype.paths."""
 from __future__ import annotations
 
 from pathlib import Path
 
 import pytest
 
-from stile.errors import UnsupportedFile
-from stile.paths import (
+from cotype.errors import UnsupportedFile
+from cotype.paths import (
     CONFLICT_ID_RE,
     base_path,
     conflict_dir,
@@ -18,7 +18,7 @@ from stile.paths import (
 def test_sidecar_dir_naming(tmp_path: Path):
     f = tmp_path / "todo.txt"
     f.write_text("x")
-    assert sidecar_dir(f) == tmp_path / ".todo.txt.stile"
+    assert sidecar_dir(f) == tmp_path / ".todo.txt.cotype"
 
 
 def test_resolve_target_rejects_missing(tmp_path: Path):
@@ -67,6 +67,6 @@ def test_conflict_dir_rejects_bad_id(tmp_path: Path):
 
 
 def test_base_path_layout(tmp_path: Path):
-    sidecar = tmp_path / ".x.stile"
+    sidecar = tmp_path / ".x.cotype"
     p = base_path(sidecar, "a" * 64)
     assert p == sidecar / "bases" / ("a" * 64)

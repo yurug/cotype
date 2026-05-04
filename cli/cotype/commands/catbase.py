@@ -1,4 +1,4 @@
-"""`stile cat-base FILE [--base-sha HASH]` -- write a base snapshot's bytes to stdout.
+"""`cotype cat-base FILE [--base-sha HASH]` -- write a base snapshot's bytes to stdout.
 
 Spec refs: kb/spec/api-contracts.md (cat-base section)
 
@@ -14,10 +14,10 @@ either the previous or the new version in full.
 """
 from __future__ import annotations
 
-from stile.errors import IoError, UnknownBase, UnmanagedFile
-from stile.hash import hex_part
-from stile.paths import base_path, resolve_target, sidecar_dir
-from stile.store import read_state, state_exists
+from cotype.errors import IoError, UnknownBase, UnmanagedFile
+from cotype.hash import hex_part
+from cotype.paths import base_path, resolve_target, sidecar_dir
+from cotype.store import read_state, state_exists
 
 
 def cmd_catbase(file_arg: str, base_sha: str | None) -> bytes:
@@ -35,7 +35,7 @@ def cmd_catbase(file_arg: str, base_sha: str | None) -> bytes:
     file = resolve_target(file_arg)
     sidecar = sidecar_dir(file)
     if not state_exists(sidecar):
-        raise UnmanagedFile(f"{file} is not managed by stile")
+        raise UnmanagedFile(f"{file} is not managed by cotype")
 
     if base_sha is None:
         st = read_state(sidecar)

@@ -19,7 +19,7 @@ Tests are real-filesystem, property-IDed, pytest-driven. No mocking of OS primit
 1. **Unit** — pure modules (`hash`, `paths`, parts of `merge`). Tiny, fast.
 2. **Module integration** — `atomic_write`, `lock`, `store` against `tmp_path`.
 3. **Command** — `cmd_<name>(args)` end-to-end with real sidecar dirs.
-4. **CLI** — invoke `python -m stile <subcommand>` via `subprocess` and parse JSON.
+4. **CLI** — invoke `python -m cotype <subcommand>` via `subprocess` and parse JSON.
 5. **Smoke** — T10 atomicity test: threaded writer + reader hashing FILE.
 
 Aim for 3+ tests per source file (per spec-driven-dev guidance).

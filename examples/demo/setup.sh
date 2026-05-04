@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Prepare the working directory for the demo.
-# Usage: ./setup.sh [WORKDIR]   (default: /tmp/stile-demo)
+# Usage: ./setup.sh [WORKDIR]   (default: /tmp/cotype-demo)
 set -euo pipefail
 
-WORK="${1:-/tmp/stile-demo}"
+WORK="${1:-/tmp/cotype-demo}"
 rm -rf "$WORK"
 mkdir -p "$WORK"
 
@@ -32,5 +32,5 @@ SLOT_LINTER
 SLOT_TESTER
 EOF
 
-stile init "$WORK/task.md" --json >/dev/null
+cotype init "$WORK/task.md" --json >/dev/null
 echo "ready: cd $WORK"

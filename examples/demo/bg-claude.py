@@ -5,8 +5,8 @@ Each agent OWNS one Markdown section in `task.md` and READS another.
 On every poll cycle the agent computes the SHA-256 of its dependency
 section; if it differs from what the agent last reacted to, the agent
 regenerates the BODY of its own section and submits the whole document
-to `stile save`. Different actors edit different sections, so concurrent
-saves are disjoint diffs that stile's `diff3 -m` merges cleanly -- the
+to `cotype save`. Different actors edit different sections, so concurrent
+saves are disjoint diffs that cotype's `diff3 -m` merges cleanly -- the
 first save lands `direct`, subsequent ones land `merged`.
 
 Roles for this demo (collaboratively design `sum_evens(xs)`):
@@ -16,7 +16,7 @@ Roles for this demo (collaboratively design `sum_evens(xs)`):
   docs    reads `## code`   writes `## docs`     (the docstring)
 
 Real LLM responses come from the `claude` CLI when it is on PATH;
-otherwise (and when STILE_DEMO_FAKE_CLAUDE=1) the agent uses canned
+otherwise (and when COTYPE_DEMO_FAKE_CLAUDE=1) the agent uses canned
 per-round bodies indexed by how many rounds it has performed.
 
 Usage: bg-claude.py <code|tests|docs>
@@ -35,8 +35,8 @@ from pathlib import Path
 
 POLL_INTERVAL = 1.0
 MAX_ROUNDS = 5
-USE_FAKE = bool(os.environ.get("STILE_DEMO_FAKE_CLAUDE"))
-CLAUDE_TIMEOUT = float(os.environ.get("STILE_DEMO_CLAUDE_TIMEOUT", "60"))
+USE_FAKE = bool(os.environ.get("COTYPE_DEMO_FAKE_CLAUDE"))
+CLAUDE_TIMEOUT = float(os.environ.get("COTYPE_DEMO_CLAUDE_TIMEOUT", "60"))
 
 # Each role's input section is the section it reacts to. Role names
 # match the section the role writes (so `bg-claude.py code` writes to
@@ -248,7 +248,7 @@ def call_claude(role: str, content: str) -> str:
     }[role]
     prompt = (
         f"You are agent:{role} working in a shared Markdown document called "
-        "`task.md` alongside a human user. The file is managed by `stile`. "
+        "`task.md` alongside a human user. The file is managed by `cotype`. "
         f"Your job: write the BODY of the `## {role}` section, reacting to "
         f"the current `## {dep}` section. Be concise. "
         "Output ONLY the body (no header, no preamble, no closing remarks). "
@@ -318,7 +318,7 @@ def main() -> int:
         try:
             meta = json.loads(
                 subprocess.check_output(
-                    ["stile", "open", "task.md", "--json"], timeout=10,
+                    ["cotype", "open", "task.md", "--json"], timeout=10,
                 )
             )
         except Exception as e:
@@ -347,7 +347,7 @@ def main() -> int:
         try:
             r = subprocess.run(
                 [
-                    "stile", "save", "task.md",
+                    "cotype", "save", "task.md",
                     "--base-sha", meta["base_sha"],
                     "--actor", f"agent:{role}",
                     "--json",

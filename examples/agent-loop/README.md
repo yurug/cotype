@@ -1,7 +1,7 @@
 # examples/agent-loop
 
 A minimum-viable demo of the headline scenario from `kb/domain/prd.md` US0:
-a user and one or more agents collaborate on a single text file via `stile`.
+a user and one or more agents collaborate on a single text file via `cotype`.
 Runs offline with a deterministic mock agent — no LLM required to see the
 shape.
 
@@ -10,16 +10,16 @@ shape.
 - `agent_mock.py` — a deterministic mock agent. Reads stdin, counts
   `## user` and `## agent` headings, appends a reply if there's a new user
   block, otherwise echoes stdin unchanged.
-- `run_agent.py` — single-shot driver. Calls `stile open`, pipes the base
-  bytes into the agent, calls `stile save`. Exit code mirrors `stile save`
+- `run_agent.py` — single-shot driver. Calls `cotype open`, pipes the base
+  bytes into the agent, calls `cotype save`. Exit code mirrors `cotype save`
   (0 saved, 1 conflict).
 
 ## Try it offline (no LLM)
 
-From an environment with `stile` on `PATH`:
+From an environment with `cotype` on `PATH`:
 
 ```bash
-mkdir -p /tmp/stile-demo && cd /tmp/stile-demo
+mkdir -p /tmp/cotype-demo && cd /tmp/cotype-demo
 cat > task.md <<'EOF'
 # Refactor the auth module
 
@@ -27,7 +27,7 @@ cat > task.md <<'EOF'
 Look at src/auth.py and tell me what's brittle.
 EOF
 
-python3 path/to/stile/examples/agent-loop/run_agent.py task.md
+python3 path/to/cotype/examples/agent-loop/run_agent.py task.md
 cat task.md
 ```
 
@@ -95,16 +95,16 @@ If both edits land on the same line, the driver exits with code 1 and
 prints a `conflict_path`. Inspect it:
 
 ```bash
-ls .task.md.stile/conflicts/<id>/
-cat .task.md.stile/conflicts/<id>/merged   # has <<<<<<< / ======= / >>>>>>> markers
+ls .task.md.cotype/conflicts/<id>/
+cat .task.md.cotype/conflicts/<id>/merged   # has <<<<<<< / ======= / >>>>>>> markers
 ```
 
 Edit the merged file in place to remove the conflict markers, then resolve
 with the shortcut:
 
 ```bash
-$EDITOR .task.md.stile/conflicts/<id>/merged
-stile resolve task.md --use-merged
+$EDITOR .task.md.cotype/conflicts/<id>/merged
+cotype resolve task.md --use-merged
 ```
 
 (The explicit `--conflict-id <id> < bytes` form still works if you'd rather

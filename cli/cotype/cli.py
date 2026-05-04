@@ -9,22 +9,22 @@ import json as json_mod
 import sys
 from typing import Optional, Sequence
 
-from stile import __version__
-from stile.commands.catbase import cmd_catbase
-from stile.commands.init import cmd_init
-from stile.commands.open_ import cmd_open
-from stile.commands.resolve import cmd_resolve
-from stile.commands.save import cmd_save
-from stile.commands.status import cmd_status
-from stile.errors import IoError, StileError, UsageError
+from cotype import __version__
+from cotype.commands.catbase import cmd_catbase
+from cotype.commands.init import cmd_init
+from cotype.commands.open_ import cmd_open
+from cotype.commands.resolve import cmd_resolve
+from cotype.commands.save import cmd_save
+from cotype.commands.status import cmd_status
+from cotype.errors import IoError, CotypeError, UsageError
 
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        prog="stile",
+        prog="cotype",
         description="Universal safe-save for concurrent text files.",
     )
-    p.add_argument("--version", action="version", version=f"stile {__version__}")
+    p.add_argument("--version", action="version", version=f"cotype {__version__}")
     sub = p.add_subparsers(dest="command", required=True)
 
     p_init = sub.add_parser("init", help="initialise the sidecar for FILE")
@@ -98,7 +98,7 @@ def emit_success(payload: dict, *, json_mode: bool) -> None:
         sys.stdout.write(json_mod.dumps(payload) + "\n")
 
 
-def emit_error(e: StileError, *, json_mode: bool) -> None:
+def emit_error(e: CotypeError, *, json_mode: bool) -> None:
     if json_mode:
         sys.stdout.write(
             json_mod.dumps(
@@ -143,7 +143,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         if payload.get("status") == "conflict":
             return 1
         return 0
-    except StileError as e:
+    except CotypeError as e:
         emit_error(e, json_mode=json_mode)
         return e.exit_code
     except OSError as e:

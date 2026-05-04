@@ -62,7 +62,7 @@ Each entry: **ID** · **scenario** · **expected** · **enforces**.
 - Enforces: P7.
 
 ### T8 — resolve clears conflict
-- Scenario: after T6, edit FILE on disk to remove the markers, then run `stile resolve FILE`.
+- Scenario: after T6, edit FILE on disk to remove the markers, then run `cotype resolve FILE`.
 - Expected: exit 0, FILE bytes = the user's edited content, `state.pending_conflict == null`, `status` reports `clean`. If FILE still has markers, `resolve` exits 2 with `UsageError`.
 - Enforces: P4 (post-resolution cleanup), P12.
 
@@ -111,7 +111,7 @@ Each entry: **ID** · **scenario** · **expected** · **enforces**.
 - Expected: `realpath` resolves; sidecar attaches to `real-file.txt`. `init` on the symlink and on the real file produce the same sidecar.
 
 ### T18 — relative vs absolute FILE arg
-- Scenario: `stile init ./notes/todo.txt` then `stile open /home/me/notes/todo.txt`.
+- Scenario: `cotype init ./notes/todo.txt` then `cotype open /home/me/notes/todo.txt`.
 - Expected: same sidecar found; same operations.
 
 ### T19 — actor with shell metacharacters

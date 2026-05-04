@@ -1,4 +1,4 @@
-"""Tests for stile.hash."""
+"""Tests for cotype.hash."""
 from __future__ import annotations
 
 import hashlib
@@ -7,8 +7,8 @@ import random
 
 import pytest
 
-from stile.errors import UnknownBase
-from stile.hash import HASH_RE, hash_bytes, hex_part
+from cotype.errors import UnknownBase
+from cotype.hash import HASH_RE, hash_bytes, hex_part
 
 
 def test_P5_hash_byte_exact_empty():

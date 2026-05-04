@@ -1,7 +1,7 @@
 ---
 id: adr-0001
 type: decision
-summary: ADR-0001 — implement stile in Python 3.11+ using stdlib only; no third-party runtime deps.
+summary: ADR-0001 — implement cotype in Python 3.11+ using stdlib only; no third-party runtime deps.
 domain: architecture
 last-updated: 2026-05-03
 depends-on: []
@@ -13,7 +13,7 @@ related: [architecture-overview, adr-0002]
 
 ## Context
 
-`stile` is a CLI focused on correctness and KISS. Implementation candidates: Python, Go, Rust, OCaml. We must pick one before building anything.
+`cotype` is a CLI focused on correctness and KISS. Implementation candidates: Python, Go, Rust, OCaml. We must pick one before building anything.
 
 Hot paths in the tool:
 - SHA-256 of file contents (1 KB to ~50 MB)
@@ -34,13 +34,13 @@ Test-time dependency: `pytest` (dev only).
 ## Consequences
 
 Positive:
-- Zero build step. `pip install -e cli/` or even `python -m stile` from a clone.
+- Zero build step. `pip install -e cli/` or even `python -m cotype` from a clone.
 - All behaviour is auditable in plain Python.
 - stdlib provides every primitive we need (`hashlib`, `fcntl.flock`, `os.replace`, `os.fsync`, `tempfile`, `json`, `argparse`, `subprocess`, `uuid`, `shutil`).
 - Trivial portability across Linux/macOS.
 
 Negative:
-- ~30–80 ms cold startup per `stile` invocation. Acceptable for editor-paced use; could matter if a caller batches thousands of `save`s (out of scope — see PRD §5).
+- ~30–80 ms cold startup per `cotype` invocation. Acceptable for editor-paced use; could matter if a caller batches thousands of `save`s (out of scope — see PRD §5).
 - Higher memory floor than a Go/Rust binary. Acceptable.
 - No Windows support (POSIX flock semantics differ; out of scope per NF5).
 

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""A deterministic mock agent for testing stile-driven workflows offline.
+"""A deterministic mock agent for testing cotype-driven workflows offline.
 
 Behaviour:
   - Reads the file content from stdin.
   - Counts top-level '## user' and '## agent' headings.
   - If user_count > agent_count, appends a new '## agent (mock #N)' block.
-  - Otherwise outputs stdin unchanged (so `stile save` becomes a noop).
+  - Otherwise outputs stdin unchanged (so `cotype save` becomes a noop).
 
 Output is fully deterministic given the input -- same input bytes in,
 same output bytes out -- which is what makes the loop testable. A real

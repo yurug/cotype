@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Multi-pane tmux demo: a brainstorming session on a stile-managed
+# Multi-pane tmux demo: a brainstorming session on a cotype-managed
 # Markdown file. Three Claude-driven personas (cook, logistics, ux)
 # plus a note-taker collaborate via the headless-agents.sh script;
 # a tiny puppeteer drives Emacs to play the user.
@@ -8,7 +8,7 @@
 #
 #   +---------------------------------------------------------------+
 #   |                                                               |
-#   |    Emacs viewer of brainstorm.md (stile-mode + auto-revert)   |
+#   |    Emacs viewer of brainstorm.md (cotype-mode + auto-revert)   |
 #   |                                                               |
 #   +-------------------------------+-------------------------------+
 #   |  user (puppeteer typing)      |  agents (headless-agents log) |
@@ -19,11 +19,11 @@
 set -euo pipefail
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-WORK="${1:-/tmp/stile-crepe-demo}"
-SESSION="${STILE_DEMO_SESSION:-stile-crepe-demo}"
+WORK="${1:-/tmp/cotype-crepe-demo}"
+SESSION="${COTYPE_DEMO_SESSION:-cotype-crepe-demo}"
 
 command -v tmux   >/dev/null || { echo "tmux not on PATH" >&2; exit 2; }
-command -v stile  >/dev/null || { echo "stile not on PATH (try: pip install -e cli/)" >&2; exit 2; }
+command -v cotype  >/dev/null || { echo "cotype not on PATH (try: pip install -e cli/)" >&2; exit 2; }
 command -v claude >/dev/null || { echo "claude not on PATH" >&2; exit 2; }
 command -v emacs  >/dev/null || { echo "emacs not on PATH" >&2; exit 2; }
 
@@ -48,7 +48,7 @@ agents_pane=$(tmux split-window -h -t "$user_pane" -l 90 -c "$WORK" \
 
 ENV_PREFIX='ZDOTDIR=/dev/null BASH_ENV= ENV='
 
-# Top: real Emacs running stile-mode against brainstorm.md.
+# Top: real Emacs running cotype-mode against brainstorm.md.
 tmux send-keys -t "$viewer" \
     "clear; $ENV_PREFIX exec emacs -nw -Q -l '$DIR/demo-init.el' '$FILE'" Enter
 

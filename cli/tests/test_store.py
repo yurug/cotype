@@ -1,4 +1,4 @@
-"""Tests for stile.store."""
+"""Tests for cotype.store."""
 from __future__ import annotations
 
 import json
@@ -6,9 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from stile.errors import CorruptSidecar
-from stile.hash import hash_bytes
-from stile.store import (
+from cotype.errors import CorruptSidecar
+from cotype.hash import hash_bytes
+from cotype.store import (
     State,
     ensure_layout,
     read_state,
@@ -19,7 +19,7 @@ from stile.store import (
 
 
 def test_state_roundtrip(tmp_path: Path):
-    sidecar = tmp_path / ".f.stile"
+    sidecar = tmp_path / ".f.cotype"
     ensure_layout(sidecar)
     st = State(target_path="../f", last_known_sha="sha256:" + "a" * 64)
     write_state(sidecar, st)
@@ -31,7 +31,7 @@ def test_state_roundtrip(tmp_path: Path):
 
 
 def test_state_rejects_unsupported_format_version(tmp_path: Path):
-    sidecar = tmp_path / ".f.stile"
+    sidecar = tmp_path / ".f.cotype"
     ensure_layout(sidecar)
     (sidecar / "state.json").write_text(
         json.dumps(
@@ -43,7 +43,7 @@ def test_state_rejects_unsupported_format_version(tmp_path: Path):
 
 
 def test_T15_corrupt_state_json_rejected(tmp_path: Path):
-    sidecar = tmp_path / ".f.stile"
+    sidecar = tmp_path / ".f.cotype"
     ensure_layout(sidecar)
     (sidecar / "state.json").write_text("{not json")
     with pytest.raises(CorruptSidecar):
@@ -51,7 +51,7 @@ def test_T15_corrupt_state_json_rejected(tmp_path: Path):
 
 
 def test_state_rejects_missing_required_fields(tmp_path: Path):
-    sidecar = tmp_path / ".f.stile"
+    sidecar = tmp_path / ".f.cotype"
     ensure_layout(sidecar)
     (sidecar / "state.json").write_text(json.dumps({"format_version": 1}))
     with pytest.raises(CorruptSidecar):
@@ -59,7 +59,7 @@ def test_state_rejects_missing_required_fields(tmp_path: Path):
 
 
 def test_store_base_dedupes(tmp_path: Path):
-    sidecar = tmp_path / ".f.stile"
+    sidecar = tmp_path / ".f.cotype"
     ensure_layout(sidecar)
     content = b"hello\n"
     sha = hash_bytes(content)
@@ -70,6 +70,6 @@ def test_store_base_dedupes(tmp_path: Path):
 
 
 def test_state_exists_negative(tmp_path: Path):
-    sidecar = tmp_path / ".f.stile"
+    sidecar = tmp_path / ".f.cotype"
     sidecar.mkdir()
     assert state_exists(sidecar) is False

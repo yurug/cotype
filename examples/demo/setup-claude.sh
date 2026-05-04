@@ -10,11 +10,11 @@
 #   docs    reads `## code`   writes `## docs`     (the docstring)
 #
 # Different actors edit different sections, so concurrent saves are
-# disjoint diffs that stile's `diff3 -m` merges cleanly. There is no
+# disjoint diffs that cotype's `diff3 -m` merges cleanly. There is no
 # trailing-append "chat" anywhere -- the document IS the workspace.
 set -euo pipefail
 
-WORK="${1:-/tmp/stile-demo}"
+WORK="${1:-/tmp/cotype-demo}"
 rm -rf "$WORK"
 mkdir -p "$WORK"
 
@@ -45,5 +45,5 @@ cat > "$WORK/task.md" <<'EOF'
 (no docstring yet -- waiting on code)
 EOF
 
-stile init "$WORK/task.md" --json >/dev/null
+cotype init "$WORK/task.md" --json >/dev/null
 echo "ready: cd $WORK"

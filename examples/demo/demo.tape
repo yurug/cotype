@@ -1,6 +1,6 @@
-# stile demo -- 4 panes, real concurrent agent processes editing the
+# cotype demo -- 4 panes, real concurrent agent processes editing the
 # SAME task.md. Top pane: live editor view of the file. Bottom row:
-# three bg-agent.py processes that each call `stile open` + `stile save`
+# three bg-agent.py processes that each call `cotype open` + `cotype save`
 # in parallel; the first save lands `direct` and the next two are 3-way
 # merged because their bases went stale.
 #
@@ -21,7 +21,7 @@ Set TypingSpeed 30ms
 Set Padding 10
 
 # === Off-screen ===
-# Launch the demo: kills any prior session, re-seeds /tmp/stile-demo,
+# Launch the demo: kills any prior session, re-seeds /tmp/cotype-demo,
 # creates the 4-pane tmux layout, sends Emacs to the top pane, sends the
 # three agent processes to the bottom panes (each with a 2 s pre-open
 # delay so Emacs has time to come up first), and attaches.
@@ -33,7 +33,7 @@ Show
 
 # === Visible from here ===
 # Emacs finishes its startup (-Q + our demo-init.el), opens task.md,
-# auto-enables stile-mode, captures its base. ~1 s.
+# auto-enables cotype-mode, captures its base. ~1 s.
 # Then the three agents wake from their START_DELAY and the cascade
 # fires: reviewer direct, linter merged, tester merged. Emacs's
 # auto-revert (file-notify) reloads the buffer after each save, so the
@@ -48,5 +48,5 @@ Hide
 Ctrl+B
 Type "d"
 Sleep 300ms
-Type "tmux kill-session -t stile-tmux-demo 2>/dev/null"
+Type "tmux kill-session -t cotype-tmux-demo 2>/dev/null"
 Enter

@@ -73,14 +73,14 @@ Skip comments that just restate the code.
 ## Naming
 
 - `snake_case` for functions, modules, variables.
-- `PascalCase` for classes (only `StileError` subclasses for now).
+- `PascalCase` for classes (only `CotypeError` subclasses for now).
 - Constants: `SCREAMING_SNAKE`. Defined at module top.
 - Internal helpers: `_leading_underscore`. Public functions: no prefix.
 
 ## Imports
 
-- Group: stdlib, then local (`from stile import ...`). One blank line between.
-- No relative imports across packages (`from stile.commands.save import cmd_save`, not `from .save import ...` outside `commands/`).
+- Group: stdlib, then local (`from cotype import ...`). One blank line between.
+- No relative imports across packages (`from cotype.commands.save import cmd_save`, not `from .save import ...` outside `commands/`).
 - `commands/` may use `from .save import cmd_save`-style intra-package imports.
 
 ## File-level structure

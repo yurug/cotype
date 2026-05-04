@@ -12,7 +12,7 @@ import re
 import stat
 from pathlib import Path
 
-from stile.errors import UnsupportedFile
+from cotype.errors import UnsupportedFile
 
 # Conflict ids are 32 lowercase hex chars (uuid4 hex with dashes stripped).
 # This regex is the wire contract; anything else is rejected before being used
@@ -37,8 +37,8 @@ def resolve_target(arg: str) -> Path:
 
 
 def sidecar_dir(file: Path) -> Path:
-    """Return the sidecar dir for `file`: dirname/.basename.stile."""
-    return file.parent / f".{file.name}.stile"
+    """Return the sidecar dir for `file`: dirname/.basename.cotype."""
+    return file.parent / f".{file.name}.cotype"
 
 
 def base_path(sidecar: Path, hex_64: str) -> Path:

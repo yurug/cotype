@@ -1,15 +1,15 @@
-"""Tests for stile.commands.save -- direct, noop, and reject paths."""
+"""Tests for cotype.commands.save -- direct, noop, and reject paths."""
 from __future__ import annotations
 
 from pathlib import Path
 
 import pytest
 
-from stile.commands.init import cmd_init
-from stile.commands.open_ import cmd_open
-from stile.commands.save import cmd_save
-from stile.errors import UnknownBase, UnmanagedFile
-from stile.hash import hash_bytes
+from cotype.commands.init import cmd_init
+from cotype.commands.open_ import cmd_open
+from cotype.commands.save import cmd_save
+from cotype.errors import UnknownBase, UnmanagedFile
+from cotype.hash import hash_bytes
 
 
 def test_T3_P12_direct_save(tmp_path: Path):

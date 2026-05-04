@@ -1,6 +1,6 @@
-# stile (CLI)
+# cotype (CLI)
 
-The Python implementation of the `stile` CLI — universal safe-save for
+The Python implementation of the `cotype` CLI — universal safe-save for
 concurrent text files.
 
 This is the package that gets installed by editor integrations and agent
@@ -16,7 +16,7 @@ Requires **Python ≥ 3.11** and **POSIX `diff3`** (from `diffutils`).
 pip install -e cli/
 
 # verify
-stile --help
+cotype --help
 ```
 
 ## Test
@@ -32,8 +32,8 @@ pytest -q
 ```
 cli/
 ├── pyproject.toml
-├── stile/                  the package
-│   ├── __main__.py         python -m stile
+├── cotype/                  the package
+│   ├── __main__.py         python -m cotype
 │   ├── cli.py              argparse + dispatch + JSON envelope
 │   ├── errors.py           stable error names + exit codes
 │   ├── hash.py             SHA-256 of raw bytes (P5 byte-exact)
@@ -55,12 +55,12 @@ cli/
 ## Commands
 
 ```text
-stile init    FILE [--json]
-stile open    FILE [--json]
-stile save    FILE --base-sha HASH [--actor ACTOR] [--json] < proposed
-stile status  FILE [--json]
-stile resolve FILE [--conflict-id ID | --use-merged] [--actor ACTOR] [--json]
-stile cat-base FILE [--base-sha HASH]
+cotype init    FILE [--json]
+cotype open    FILE [--json]
+cotype save    FILE --base-sha HASH [--actor ACTOR] [--json] < proposed
+cotype status  FILE [--json]
+cotype resolve FILE [--conflict-id ID | --use-merged] [--actor ACTOR] [--json]
+cotype cat-base FILE [--base-sha HASH]
 ```
 
 Full surface, exit codes, and stable error names: see `../README.md` and

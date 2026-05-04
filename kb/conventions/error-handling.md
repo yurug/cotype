@@ -12,24 +12,24 @@ related: [conventions-code-style, architecture-overview]
 # Error handling
 
 ## One-liner
-Raise typed `StileError` subclasses at the lowest layer that knows the cause; the CLI translates to JSON envelope + exit code.
+Raise typed `CotypeError` subclasses at the lowest layer that knows the cause; the CLI translates to JSON envelope + exit code.
 
 ## The hierarchy lives in `errors.py`
 
 ```python
-class StileError(Exception):
-    name: ClassVar[str] = "StileError"
+class CotypeError(Exception):
+    name: ClassVar[str] = "CotypeError"
     exit_code: ClassVar[int] = 6  # default: IO
 
-class UsageError(StileError):       name = "UsageError";       exit_code = 2
-class UnsupportedFile(StileError):  name = "UnsupportedFile";  exit_code = 3
-class UnmanagedFile(StileError):    name = "UnmanagedFile";    exit_code = 3
-class CorruptSidecar(StileError):   name = "CorruptSidecar";   exit_code = 3
-class UnknownBase(StileError):      name = "UnknownBase";      exit_code = 4
-class ConflictPending(StileError):  name = "ConflictPending";  exit_code = 5
-class IoError(StileError):          name = "IoError";          exit_code = 6
-class MergeToolError(StileError):   name = "MergeToolError";   exit_code = 7
-class InvalidUtf8(StileError):      name = "InvalidUtf8";      exit_code = 3
+class UsageError(CotypeError):       name = "UsageError";       exit_code = 2
+class UnsupportedFile(CotypeError):  name = "UnsupportedFile";  exit_code = 3
+class UnmanagedFile(CotypeError):    name = "UnmanagedFile";    exit_code = 3
+class CorruptSidecar(CotypeError):   name = "CorruptSidecar";   exit_code = 3
+class UnknownBase(CotypeError):      name = "UnknownBase";      exit_code = 4
+class ConflictPending(CotypeError):  name = "ConflictPending";  exit_code = 5
+class IoError(CotypeError):          name = "IoError";          exit_code = 6
+class MergeToolError(CotypeError):   name = "MergeToolError";   exit_code = 7
+class InvalidUtf8(CotypeError):      name = "InvalidUtf8";      exit_code = 3
 ```
 
 ## Raising
@@ -44,7 +44,7 @@ if not bases_path.exists():
 
 ## Propagation
 
-- Do NOT translate `StileError` between layers. Let it bubble to the CLI.
+- Do NOT translate `CotypeError` between layers. Let it bubble to the CLI.
 - Translate stdlib exceptions at the boundary that creates them:
   ```python
   try:
@@ -62,7 +62,7 @@ try:
     result = cmd_save(args)
     emit_success(result, json=args.json)
     return 0
-except StileError as e:
+except CotypeError as e:
     emit_error(e, json=args.json)
     return e.exit_code
 except OSError as e:
@@ -73,7 +73,7 @@ except OSError as e:
 `emit_error`:
 
 ```python
-def emit_error(e: StileError, *, json: bool) -> None:
+def emit_error(e: CotypeError, *, json: bool) -> None:
     if json:
         sys.stdout.write(json_module.dumps(
             {"status": "error", "error": e.name, "message": str(e)}, indent=2) + "\n")

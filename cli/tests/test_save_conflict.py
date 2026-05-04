@@ -1,4 +1,4 @@
-"""Tests for stile.commands.save -- conflict path and post-conflict gate."""
+"""Tests for cotype.commands.save -- conflict path and post-conflict gate."""
 from __future__ import annotations
 
 import json
@@ -6,10 +6,10 @@ from pathlib import Path
 
 import pytest
 
-from stile.commands.init import cmd_init
-from stile.commands.open_ import cmd_open
-from stile.commands.save import cmd_save
-from stile.errors import ConflictPending
+from cotype.commands.init import cmd_init
+from cotype.commands.open_ import cmd_open
+from cotype.commands.save import cmd_save
+from cotype.errors import ConflictPending
 
 
 def test_T6_P4_stale_conflicting_save_writes_artifacts(tmp_path: Path):

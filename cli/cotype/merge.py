@@ -17,8 +17,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Union
 
-from stile.errors import MergeToolError
-from stile.paths import tmp_dir
+from cotype.errors import MergeToolError
+from cotype.paths import tmp_dir
 
 
 @dataclass(frozen=True)

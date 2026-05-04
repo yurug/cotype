@@ -1,10 +1,10 @@
-"""Tests for stile.commands.status."""
+"""Tests for cotype.commands.status."""
 from __future__ import annotations
 
 from pathlib import Path
 
-from stile.commands.init import cmd_init
-from stile.commands.status import cmd_status
+from cotype.commands.init import cmd_init
+from cotype.commands.status import cmd_status
 
 
 def test_status_unmanaged(tmp_path: Path):

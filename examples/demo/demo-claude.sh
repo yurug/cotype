@@ -6,7 +6,7 @@
 #   +--------------------------------------------------+
 #   |                                                  |
 #   |              Emacs (your editor)                 |
-#   |              -- stile-mode active --             |
+#   |              -- cotype-mode active --             |
 #   |                                                  |
 #   +-------+--------------+-------------+-------------+
 #   | user  | agent:code   | agent:tests | agent:docs  |
@@ -20,19 +20,19 @@
 # changes.
 #
 # `claude` CLI is required for real LLM responses; without it the
-# agents fall back to canned bodies (STILE_DEMO_FAKE_CLAUDE=1).
+# agents fall back to canned bodies (COTYPE_DEMO_FAKE_CLAUDE=1).
 set -euo pipefail
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-WORK="${1:-/tmp/stile-twitter-demo}"
-SESSION="${STILE_DEMO_SESSION:-stile-claude-demo}"
+WORK="${1:-/tmp/cotype-twitter-demo}"
+SESSION="${COTYPE_DEMO_SESSION:-cotype-claude-demo}"
 
 command -v tmux >/dev/null || { echo "tmux not on PATH" >&2; exit 2; }
-command -v stile >/dev/null || { echo "stile not on PATH (try: pip install -e cli/)" >&2; exit 2; }
+command -v cotype >/dev/null || { echo "cotype not on PATH (try: pip install -e cli/)" >&2; exit 2; }
 
 if ! command -v claude >/dev/null 2>&1; then
     echo "note: claude CLI not on PATH; agents will use canned responses" >&2
-    export STILE_DEMO_FAKE_CLAUDE=1
+    export COTYPE_DEMO_FAKE_CLAUDE=1
 fi
 
 tmux kill-session -t "$SESSION" 2>/dev/null || true
@@ -53,7 +53,7 @@ agent_a=$(tmux split-window -h -t "$user_pane" -l 49 -c "$WORK" \
     -P -F "#{pane_id}")
 # Geometry now: user_pane (~32 cols) | agent_a (49) | agent_b (49) | agent_c (50)
 
-# Top pane viewer: real Emacs running stile-mode, fallback to bg-viewer.sh
+# Top pane viewer: real Emacs running cotype-mode, fallback to bg-viewer.sh
 if command -v emacs >/dev/null 2>&1; then
     VIEWER_CMD="exec emacs -nw -Q -l '$DIR/demo-init.el' task.md"
 else
@@ -62,8 +62,8 @@ else
 fi
 
 ENV_PREFIX='ZDOTDIR=/dev/null BASH_ENV= ENV='
-if [[ "${STILE_DEMO_FAKE_CLAUDE:-}" ]]; then
-    ENV_PREFIX="$ENV_PREFIX STILE_DEMO_FAKE_CLAUDE=1"
+if [[ "${COTYPE_DEMO_FAKE_CLAUDE:-}" ]]; then
+    ENV_PREFIX="$ENV_PREFIX COTYPE_DEMO_FAKE_CLAUDE=1"
 fi
 
 tmux send-keys -t "$viewer"    "clear; $ENV_PREFIX $VIEWER_CMD" Enter

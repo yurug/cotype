@@ -12,7 +12,7 @@ related: [properties-edge-cases]
 # Non-functional properties
 
 ## One-liner
-Performance, resource, and portability targets. Loose bounds — `stile` is correctness-first.
+Performance, resource, and portability targets. Loose bounds — `cotype` is correctness-first.
 
 ---
 
@@ -22,7 +22,7 @@ Performance, resource, and portability targets. Loose bounds — `stile` is corr
 
 **Why.** Editor saves should feel instant.
 
-**Measure.** `time stile save FILE --base-sha ... < 1MB-file`. Repeat 10×, assert p95 <100 ms.
+**Measure.** `time cotype save FILE --base-sha ... < 1MB-file`. Repeat 10×, assert p95 <100 ms.
 
 ---
 
@@ -40,7 +40,7 @@ Performance, resource, and portability targets. Loose bounds — `stile` is corr
 
 **Statement.** Peak resident memory is O(file size). A 100 MB FILE save MUST NOT load multiple copies (we read once into bytes; tolerate ~3× while merging).
 
-**Why.** Sanity bound; `stile` does not promise streaming.
+**Why.** Sanity bound; `cotype` does not promise streaming.
 
 **Measure.** Manual check on a 100 MB synthetic file.
 
@@ -68,11 +68,11 @@ Performance, resource, and portability targets. Loose bounds — `stile` is corr
 
 ### NF6 — Startup overhead
 
-**Statement.** Cold `stile --help` returns in <120 ms. Imports kept lean (no heavy dynamic loads).
+**Statement.** Cold `cotype --help` returns in <120 ms. Imports kept lean (no heavy dynamic loads).
 
-**Why.** Editor integrations call stile per save; startup should not feel like a stall.
+**Why.** Editor integrations call cotype per save; startup should not feel like a stall.
 
-**Measure.** `time stile --help` on a warm Python install.
+**Measure.** `time cotype --help` on a warm Python install.
 
 ## Agent notes
 > These are loose targets. Failing a number is a signal to investigate, not an automatic blocker.

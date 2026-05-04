@@ -1,11 +1,11 @@
-"""Tests for stile.commands.open_."""
+"""Tests for cotype.commands.open_."""
 from __future__ import annotations
 
 from pathlib import Path
 
-from stile.commands.init import cmd_init
-from stile.commands.open_ import cmd_open
-from stile.hash import hash_bytes
+from cotype.commands.init import cmd_init
+from cotype.commands.open_ import cmd_open
+from cotype.hash import hash_bytes
 
 
 def test_T2_P15_open_returns_base_path_matching_base_sha(tmp_path: Path):
@@ -23,7 +23,7 @@ def test_open_auto_inits_when_sidecar_absent(tmp_path: Path):
     f.write_text("hi\n")
     r = cmd_open(str(f))
     assert r["status"] == "ok"
-    assert (tmp_path / ".f.txt.stile" / "state.json").exists()
+    assert (tmp_path / ".f.txt.cotype" / "state.json").exists()
 
 
 def test_open_reports_pending_conflict(with_pending_conflict):

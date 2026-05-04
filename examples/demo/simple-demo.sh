@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # 15-second scripted demo: 1 user (Emacs) + 3 agents collaborating on
-# the same task.md via stile. Run live in your terminal to preview;
+# the same task.md via cotype. Run live in your terminal to preview;
 # render to GIF/MP4 with `vhs demo.tape`.
 set -euo pipefail
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-WORK="${1:-/tmp/stile-demo}"
+WORK="${1:-/tmp/cotype-demo}"
 
 # Idempotent setup: clean working dir + seeded task.md + sidecar.
 "$DIR/setup.sh" "$WORK" >/dev/null

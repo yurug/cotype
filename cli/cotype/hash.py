@@ -11,7 +11,7 @@ from __future__ import annotations
 import hashlib
 import re
 
-from stile.errors import UnknownBase
+from cotype.errors import UnknownBase
 
 # Canonical hash form; case-sensitive. The hex is required to be lowercase.
 HASH_RE = re.compile(r"^sha256:[0-9a-f]{64}$")

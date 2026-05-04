@@ -15,7 +15,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator
 
-from stile.errors import IoError
+from cotype.errors import IoError
 
 
 @contextmanager

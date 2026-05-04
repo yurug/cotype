@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Background agent for one tmux pane in the Twitter demo.
 
-Captures a base via `stile open`, waits at a barrier until all three
+Captures a base via `cotype open`, waits at a barrier until all three
 agents have captured (so they all hold the SAME base_sha), then saves
 its proposed bytes. The first save that grabs the sidecar lock lands
-`direct`; the others see a stale base + disjoint diffs and stile
+`direct`; the others see a stale base + disjoint diffs and cotype
 3-way merges them. A small post-barrier jitter makes the cascade
 visible in the recording.
 
@@ -41,14 +41,14 @@ BODIES = {
 }
 
 # Lives inside the working dir; setup.sh wipes the working dir on every run.
-BARRIER_DIR = Path.cwd() / ".stile-demo-barrier"
+BARRIER_DIR = Path.cwd() / ".cotype-demo-barrier"
 N_AGENTS = 3
 
 # Pre-open delay so the Emacs viewer pane has time to start up and
-# enable stile-mode BEFORE agents start saving (otherwise the cascade
+# enable cotype-mode BEFORE agents start saving (otherwise the cascade
 # would happen before Emacs finishes loading and the viewer would attach
 # to an already-populated file). Override to 0 in tests via env var.
-START_DELAY = float(os.environ.get("STILE_DEMO_START_DELAY", "2.0"))
+START_DELAY = float(os.environ.get("COTYPE_DEMO_START_DELAY", "2.0"))
 
 # Post-barrier jitter so the three saves cascade visibly in the recording.
 SAVE_JITTER = {"reviewer": 0.0, "linter": 0.4, "tester": 0.8}
@@ -82,7 +82,7 @@ def main() -> int:
     try:
         # Phase 1 -- everyone captures a base.
         meta = json.loads(
-            subprocess.check_output(["stile", "open", "task.md", "--json"])
+            subprocess.check_output(["cotype", "open", "task.md", "--json"])
         )
         base_sha_short = meta["base_sha"].split(":", 1)[1][:8]
         base_bytes = Path(meta["base_path"]).read_bytes()
@@ -99,7 +99,7 @@ def main() -> int:
         time.sleep(SAVE_JITTER.get(role, 0.0))
         r = subprocess.run(
             [
-                "stile", "save", "task.md",
+                "cotype", "save", "task.md",
                 "--base-sha", meta["base_sha"],
                 "--actor", f"agent:{role}",
                 "--json",

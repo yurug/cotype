@@ -1,20 +1,20 @@
-"""Tests for stile.commands.resolve."""
+"""Tests for cotype.commands.resolve."""
 from __future__ import annotations
 
 from pathlib import Path
 
 import pytest
 
-from stile.commands.init import cmd_init
-from stile.commands.resolve import _has_conflict_markers, cmd_resolve
-from stile.commands.save import cmd_save
-from stile.commands.open_ import cmd_open
-from stile.commands.status import cmd_status
-from stile.errors import ConflictPending, UsageError
+from cotype.commands.init import cmd_init
+from cotype.commands.resolve import _has_conflict_markers, cmd_resolve
+from cotype.commands.save import cmd_save
+from cotype.commands.open_ import cmd_open
+from cotype.commands.status import cmd_status
+from cotype.errors import ConflictPending, UsageError
 
 
 def test_T8_resolve_clears_conflict(with_pending_conflict):
-    """User edits FILE to remove markers; `stile resolve FILE` accepts."""
+    """User edits FILE to remove markers; `cotype resolve FILE` accepts."""
     f, _cid = with_pending_conflict
     # The user opens FILE in their editor and removes the markers.
     f.write_bytes(b"hello\nresolved\n")
@@ -58,7 +58,7 @@ def test_resolve_then_save_works_again(with_pending_conflict):
 def test_save_after_conflict_still_blocked_until_resolve(with_pending_conflict):
     """ConflictPending is enforced even if the user edits FILE without resolving."""
     f, _ = with_pending_conflict
-    # User edits markers out but forgets to run `stile resolve`.
+    # User edits markers out but forgets to run `cotype resolve`.
     f.write_bytes(b"hello\nresolved\n")
     op = cmd_open(str(f))
     with pytest.raises(ConflictPending):

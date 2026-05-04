@@ -20,7 +20,7 @@ Run through this list before each release. Treat any unchecked critical/high as 
 - [ ] JSON output shapes in `spec/api-contracts.md` match real CLI output byte-for-byte (key order may vary; structure must match).
 - [ ] Every error name in `spec/error-taxonomy.md` is reachable by at least one input.
 - [ ] Exit codes match the table.
-- [ ] `state.json` written by stile validates against `spec/config-and-formats.md`.
+- [ ] `state.json` written by cotype validates against `spec/config-and-formats.md`.
 - [ ] Sidecar layout matches `spec/data-model.md`.
 
 ## Section B — Properties
@@ -57,7 +57,7 @@ Run through this list before each release. Treat any unchecked critical/high as 
 - [ ] NF1: `save` of 1 MB file p95 <100 ms (manual measure).
 - [ ] NF2: 100-line merge <250 ms.
 - [ ] NF3: 100 MB save peaks at <3× file size in memory.
-- [ ] NF6: `stile --help` <120 ms cold.
+- [ ] NF6: `cotype --help` <120 ms cold.
 - [ ] No accidental O(N²) — diff/merge is O(N) line-based per `diff3`.
 
 ## Section E — UX

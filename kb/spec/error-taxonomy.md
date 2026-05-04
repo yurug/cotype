@@ -64,7 +64,7 @@ Exit 4.
 `save` while a conflict is pending:
 ```json
 { "status": "error", "error": "ConflictPending",
-  "message": "resolve conflict <id> first (see .file.txt.stile/conflicts/<id>)" }
+  "message": "resolve conflict <id> first (see .file.txt.cotype/conflicts/<id>)" }
 ```
 Exit 5.
 

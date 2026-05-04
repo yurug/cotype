@@ -32,17 +32,17 @@ H(b) = "sha256:" ++ lowercase_hex(SHA256(b))
 Let `FILE` be the (real, symlink-resolved) target path.
 
 ```
-sidecar(FILE) = dirname(FILE) / ("." ++ basename(FILE) ++ ".stile")
+sidecar(FILE) = dirname(FILE) / ("." ++ basename(FILE) ++ ".cotype")
 ```
 
-Example: `notes/todo.txt` → `notes/.todo.txt.stile`.
+Example: `notes/todo.txt` → `notes/.todo.txt.cotype`.
 
 `FILE` MUST be a regular file. Reject directories, symlinks-as-target (resolve first), device files, FIFOs, sockets — error name `UnsupportedFile`.
 
 ## Sidecar layout
 
 ```
-.FILE.stile/
+.FILE.cotype/
   lock                   # advisory flock target (may be empty)
   state.json             # current state (see schema below)
   bases/                 # content-addressed: bases/<hex>
@@ -78,14 +78,14 @@ When a conflict is pending, `pending_conflict` is:
   "base_sha": "sha256:...",
   "current_sha": "sha256:...",
   "proposed_sha": "sha256:...",
-  "path": ".file.txt.stile/conflicts/<id>"
+  "path": ".file.txt.cotype/conflicts/<id>"
 }
 ```
 
 Notes:
-- `target_path` is stored relative to the sidecar dir; informational only. The actual managed path is implicit (sidecar dir → strip `.` and `.stile`).
+- `target_path` is stored relative to the sidecar dir; informational only. The actual managed path is implicit (sidecar dir → strip `.` and `.cotype`).
 - `last_known_sha` is **advisory**. Truth is always `H(read(FILE))` at command time.
-- `format_version` is reserved for future migrations. `stile` always writes `1` and refuses any other value as `CorruptSidecar`.
+- `format_version` is reserved for future migrations. `cotype` always writes `1` and refuses any other value as `CorruptSidecar`.
 
 ## conflict meta.json schema
 

@@ -9,10 +9,10 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from stile.commands.init import cmd_init
-from stile.commands.open_ import cmd_open
-from stile.commands.save import cmd_save
-from stile.commands.status import cmd_status
+from cotype.commands.init import cmd_init
+from cotype.commands.open_ import cmd_open
+from cotype.commands.save import cmd_save
+from cotype.commands.status import cmd_status
 
 
 def test_P3_sidecar_is_auxiliary(tmp_path: Path):
@@ -20,7 +20,7 @@ def test_P3_sidecar_is_auxiliary(tmp_path: Path):
     f = tmp_path / "f.txt"
     f.write_text("payload\n")
     cmd_init(str(f))
-    sidecar = tmp_path / ".f.txt.stile"
+    sidecar = tmp_path / ".f.txt.cotype"
     assert sidecar.is_dir()
 
     shutil.rmtree(sidecar)

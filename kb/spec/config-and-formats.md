@@ -12,7 +12,7 @@ related: [spec-algorithms]
 # Config and on-disk formats
 
 ## One-liner
-Schema of every file stile writes to disk. There is no user-editable config — only sidecar artifacts.
+Schema of every file cotype writes to disk. There is no user-editable config — only sidecar artifacts.
 
 ## Scope
 File formats only. Algorithms in `spec/algorithms.md`. CLI shapes in `spec/api-contracts.md`.
@@ -43,7 +43,7 @@ Pending conflict object:
   "base_sha": "sha256:...",
   "current_sha": "sha256:...",
   "proposed_sha": "sha256:...",
-  "path": ".file.txt.stile/conflicts/<id>"
+  "path": ".file.txt.cotype/conflicts/<id>"
 }
 ```
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Spawn N headless Claude agents that collaborate with the user (and
-# each other) on a shared file via `stile`. Each agent polls the file
+# each other) on a shared file via `cotype`. Each agent polls the file
 # on a fixed interval, calls `claude --print -p ...` with the current
-# file content, and submits the response through `stile save`. The
+# file content, and submits the response through `cotype save`. The
 # 3-way merge serialises concurrent edits across actors.
 #
 # Conflict-avoidance protocol (enforced -- not "please be careful"):
@@ -13,15 +13,15 @@
 #     it byte-for-byte. We parse out only the agent's own section body
 #     and splice it back into the bytes we read from `base_path`. Every
 #     byte outside the agent's section is, by construction, identical
-#     to what stile captured as the base. Two agents editing two
+#     to what cotype captured as the base. Two agents editing two
 #     different sections therefore cannot produce a 3-way conflict.
 #   - Agent startup is staggered across the polling INTERVAL so the N
 #     agents fire on N different phases instead of all on the same tick.
 #
-# When `stile save` produces a conflict despite all that, the file gets
+# When `cotype save` produces a conflict despite all that, the file gets
 # diff3-style `<<<<<<<` / `>>>>>>>` markers. While markers are present,
 # agents stop calling Claude -- the user is expected to edit FILE in
-# their editor and run `stile resolve FILE`. Agents resume automatically
+# their editor and run `cotype resolve FILE`. Agents resume automatically
 # once resolve clears the pending state.
 #
 # Usage:
@@ -32,7 +32,7 @@
 #
 # Stops cleanly on Ctrl-C; spawned subshells exit when the parent dies.
 #
-# Dependencies on PATH: stile, claude, jq.
+# Dependencies on PATH: cotype, claude, jq.
 set -euo pipefail
 
 if [[ $# -lt 2 ]]; then
@@ -54,11 +54,11 @@ CLAUDE_MODEL="${CLAUDE_MODEL:-claude-sonnet-4-6}"
 # the previous agent has actually replied by the time the next looks.
 STAGGER="${STAGGER:-3}"
 
-for tool in stile claude jq python3; do
+for tool in cotype claude jq python3; do
     command -v "$tool" >/dev/null || { echo "$tool not on PATH" >&2; exit 2; }
 done
 
-# Make the file managed by stile if it isn't already (idempotent).
+# Make the file managed by cotype if it isn't already (idempotent).
 [[ -f "$FILE" ]] || touch "$FILE"
 
 # Pre-allocate section headers + a unique per-role placeholder body when
@@ -80,13 +80,13 @@ if ! [[ -s "$FILE" ]]; then
     } > "$FILE"
 fi
 
-stile init "$FILE" --json >/dev/null 2>&1 || true
+cotype init "$FILE" --json >/dev/null 2>&1 || true
 
 print_conflict_hint() {
     cat >&2 <<EOF
-[stile] $FILE has a pending conflict.
+[cotype] $FILE has a pending conflict.
 Edit the file to remove the <<<<<<< / ======= / >>>>>>> markers, then run:
-    stile resolve "$FILE"
+    cotype resolve "$FILE"
 Agents will resume automatically once the conflict clears.
 EOF
 }
@@ -113,14 +113,14 @@ agent() {
         # Idle while a conflict is pending: no save can succeed and the
         # user is the only actor who can resolve it. Saves Claude calls.
         local s
-        s=$(stile status "$FILE" --json 2>/dev/null | jq -r '.status // "??"')
+        s=$(cotype status "$FILE" --json 2>/dev/null | jq -r '.status // "??"')
         if [[ "$s" == "conflicted" ]]; then
             sleep "$INTERVAL"
             continue
         fi
 
         local meta base_sha base_path proposed result
-        meta=$(stile open "$FILE" --json) || { sleep "$INTERVAL"; continue; }
+        meta=$(cotype open "$FILE" --json) || { sleep "$INTERVAL"; continue; }
         base_sha=$(printf '%s' "$meta" | jq -r .base_sha)
         base_path=$(printf '%s' "$meta" | jq -r .base_path)
 
@@ -152,8 +152,8 @@ Output the entire file (it's the simplest format), no preamble, no code fences, 
 $file_content
 </file>"
         local tmp_claude tmp_spliced
-        tmp_claude=$(mktemp -t stile-claude.XXXXXX)
-        tmp_spliced=$(mktemp -t stile-spliced.XXXXXX)
+        tmp_claude=$(mktemp -t cotype-claude.XXXXXX)
+        tmp_spliced=$(mktemp -t cotype-spliced.XXXXXX)
         # shellcheck disable=SC2064
         trap "rm -f '$tmp_claude' '$tmp_spliced'" RETURN
 
@@ -259,7 +259,7 @@ PYEOF
                 ;;
         esac
 
-        result=$(stile save "$FILE" \
+        result=$(cotype save "$FILE" \
             --base-sha "$base_sha" --actor "agent:$role" --json \
             < "$tmp_spliced") || true
         rm -f "$tmp_claude" "$tmp_spliced"

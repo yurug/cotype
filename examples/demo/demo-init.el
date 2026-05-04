@@ -1,7 +1,7 @@
-;;; Minimal Emacs init for the stile demo recording.
+;;; Minimal Emacs init for the cotype demo recording.
 ;;;
-;;; - Loads `stile.el' from ../../editors/emacs/ (path relative to this file).
-;;; - Auto-enables `stile-mode' in any buffer whose file has a stile sidecar,
+;;; - Loads `cotype.el' from ../../editors/emacs/ (path relative to this file).
+;;; - Auto-enables `cotype-mode' in any buffer whose file has a cotype sidecar,
 ;;;   so opening task.md hands control to the integration immediately.
 ;;; - Speeds up auto-revert so agent-driven file changes show up in the
 ;;;   buffer within ~half a second (a 15-second recording can't afford the
@@ -17,15 +17,15 @@
       auto-revert-verbose     nil
       auto-revert-interval    0.5)
 
-;; Locate stile.el relative to this init file.
+;; Locate cotype.el relative to this init file.
 (let* ((init-dir  (file-name-directory load-file-name))
-       (stile-dir (expand-file-name "../../editors/emacs" init-dir)))
-  (add-to-list 'load-path stile-dir))
+       (cotype-dir (expand-file-name "../../editors/emacs" init-dir)))
+  (add-to-list 'load-path cotype-dir))
 
-(require 'stile)
+(require 'cotype)
 
-;; Auto-enable stile-mode on files that already have a sidecar.
-(add-hook 'find-file-hook #'stile-maybe-enable)
+;; Auto-enable cotype-mode on files that already have a sidecar.
+(add-hook 'find-file-hook #'cotype-maybe-enable)
 
 ;; Trim chrome that distracts from the file.
 (when (fboundp 'menu-bar-mode)   (menu-bar-mode  -1))
@@ -37,15 +37,15 @@
 ;; Helpers for the puppeteer (which simulates the human user).
 ;;
 ;; The richer flow is:
-;;    M-x stile-demo-position-for-spec RET   ;; cursor lands ready to type
+;;    M-x cotype-demo-position-for-spec RET   ;; cursor lands ready to type
 ;;    <user types the bullet text, char by char>
-;;    C-x C-s                                ;; save through stile-mode
+;;    C-x C-s                                ;; save through cotype-mode
 ;;
 ;; That makes the typing visible in the editor pane (one keystroke at a
 ;; time, paced by the puppeteer's tmux send-keys cadence) and keeps the
 ;; "user" role explicit on screen.
 
-(defun stile-demo-position-for-spec ()
+(defun cotype-demo-position-for-spec ()
   "Move point to a fresh bullet line at the end of `## spec' and insert
 the leading \"- \" so the user can type the bullet text immediately.
 Does NOT save -- the puppeteer hits `C-x C-s' after typing."
@@ -57,7 +57,7 @@ Does NOT save -- the puppeteer hits `C-x C-s' after typing."
       (forward-line 1))
     (insert "- ")))
 
-(defun stile-demo-add-spec (text)
+(defun cotype-demo-add-spec (text)
   "One-shot insert -- legacy convenience for the simple-demo flow.
 Insert TEXT as a new bullet at the end of `## spec' and save."
   (interactive "sNew spec line: ")

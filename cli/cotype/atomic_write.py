@@ -15,8 +15,8 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from stile.errors import IoError
-from stile.paths import tmp_dir
+from cotype.errors import IoError
+from cotype.paths import tmp_dir
 
 
 def atomic_replace(target: Path, content: bytes, sidecar: Path) -> None:

@@ -5,10 +5,10 @@ from pathlib import Path
 
 import pytest
 
-from stile.commands.init import cmd_init
-from stile.commands.open_ import cmd_open
-from stile.commands.save import cmd_save
-from stile.errors import MergeToolError
+from cotype.commands.init import cmd_init
+from cotype.commands.open_ import cmd_open
+from cotype.commands.save import cmd_save
+from cotype.errors import MergeToolError
 
 
 def test_T20_P10_diff3_missing_is_tool_error_not_conflict(
@@ -25,7 +25,7 @@ def test_T20_P10_diff3_missing_is_tool_error_not_conflict(
         cmd_save(str(f), base_sha, "test", b"a\nb-proposed\nc\n")
     # P10: FILE unchanged; no conflict directory created.
     assert f.read_bytes() == b"a\nB\nc\n"
-    sidecar = tmp_path / ".f.txt.stile"
+    sidecar = tmp_path / ".f.txt.cotype"
     assert list((sidecar / "conflicts").iterdir()) == []
 
 

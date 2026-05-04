@@ -1,14 +1,14 @@
-"""`stile status FILE` -- report current hash and sidecar state.
+"""`cotype status FILE` -- report current hash and sidecar state.
 
 Spec refs: kb/spec/algorithms.md#status
 """
 from __future__ import annotations
 
-from stile.errors import IoError
-from stile.hash import hash_bytes
-from stile.lock import sidecar_lock
-from stile.paths import resolve_target, sidecar_dir
-from stile.store import read_state, state_exists
+from cotype.errors import IoError
+from cotype.hash import hash_bytes
+from cotype.lock import sidecar_lock
+from cotype.paths import resolve_target, sidecar_dir
+from cotype.store import read_state, state_exists
 
 
 def cmd_status(file_arg: str) -> dict:

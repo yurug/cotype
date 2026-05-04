@@ -1,7 +1,7 @@
 """End-to-end test of examples/agent-loop using the deterministic mock agent.
 
 Validates the headline use case: a file is edited by a user, an agent reads
-the base, computes a reply, and stile lands it. Subsequent passes with no
+the base, computes a reply, and cotype lands it. Subsequent passes with no
 new user input become noops.
 """
 from __future__ import annotations
@@ -68,18 +68,18 @@ def test_agent_loop_surfaces_conflict_with_exit_1(tmp_path: Path):
     # Set up so base = state at open, then mutate the file under the agent's
     # feet to force a stale base, with the agent's reply colliding with the
     # change. We achieve that by mutating EVERY line: the agent will append
-    # at the end (no overlap there), but stile will still see a stale base.
+    # at the end (no overlap there), but cotype will still see a stale base.
     # To force an actual conflict, the user's mutation must hit the same
     # region the agent's reply lands in.
     f.write_text("## user\nHello\n## agent (mock #0)\nold\n", encoding="utf-8")
     # Run once to register a base.
     subprocess.run(
-        [sys.executable, "-m", "stile", "init", str(f), "--json"], check=True
+        [sys.executable, "-m", "cotype", "init", str(f), "--json"], check=True
     )
 
     # Begin an "agent" pass: open captures base.
     open_proc = subprocess.run(
-        [sys.executable, "-m", "stile", "open", str(f), "--json"],
+        [sys.executable, "-m", "cotype", "open", str(f), "--json"],
         check=True, capture_output=True,
     )
     import json as _json
@@ -94,7 +94,7 @@ def test_agent_loop_surfaces_conflict_with_exit_1(tmp_path: Path):
     # save with the OLD base_sha. Use the CLI directly.
     proposed = b"## user\nHello\n## agent (mock #0)\nAGENT-WROTE-DIFFERENT\n"
     save = subprocess.run(
-        [sys.executable, "-m", "stile", "save", str(f),
+        [sys.executable, "-m", "cotype", "save", str(f),
          "--base-sha", meta["base_sha"], "--actor", "agent:test", "--json"],
         input=proposed, capture_output=True,
     )

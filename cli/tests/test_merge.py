@@ -1,18 +1,18 @@
-"""Tests for stile.merge -- the diff3 wrapper."""
+"""Tests for cotype.merge -- the diff3 wrapper."""
 from __future__ import annotations
 
 from pathlib import Path
 
 import pytest
 
-from stile.errors import MergeToolError
-from stile.merge import Clean, Conflict, merge3
-from stile.store import ensure_layout
+from cotype.errors import MergeToolError
+from cotype.merge import Clean, Conflict, merge3
+from cotype.store import ensure_layout
 
 
 @pytest.fixture
 def sidecar(tmp_path: Path) -> Path:
-    s = tmp_path / ".f.stile"
+    s = tmp_path / ".f.cotype"
     ensure_layout(s)
     return s
 

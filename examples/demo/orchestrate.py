@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Drive three agents through stile against a single shared base.
+"""Drive three agents through cotype against a single shared base.
 
 Used by the Twitter demo. The seeded `task.md` has a placeholder line per
 agent (SLOT_REVIEWER / SLOT_LINTER / SLOT_TESTER); each agent reads from
@@ -39,9 +39,9 @@ BODIES = {
 }
 
 
-def stile(*args: str, stdin: bytes = b"") -> dict:
+def cotype(*args: str, stdin: bytes = b"") -> dict:
     p = subprocess.run(
-        ["stile", *args], input=stdin, capture_output=True, check=False
+        ["cotype", *args], input=stdin, capture_output=True, check=False
     )
     if p.stdout:
         try:
@@ -59,8 +59,8 @@ def main() -> int:
 
     # Capture ONE base; all three agents share it.  This is the key to the
     # demo: the second and third saves see a stale base + non-overlapping
-    # diffs, so stile reports `merged` rather than `direct`.
-    meta = stile("open", target, "--json")
+    # diffs, so cotype reports `merged` rather than `direct`.
+    meta = cotype("open", target, "--json")
     base_sha = meta["base_sha"]
     base_bytes = Path(meta["base_path"]).read_bytes()
 
@@ -68,7 +68,7 @@ def main() -> int:
         proposed = base_bytes.replace(
             f"SLOT_{role}".encode(), BODIES[role].encode()
         )
-        result = stile(
+        result = cotype(
             "save", target,
             "--base-sha", base_sha,
             "--actor", f"agent:{role.lower()}",

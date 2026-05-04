@@ -1,7 +1,7 @@
 ---
 id: spec-algorithms
 type: spec
-summary: Step-by-step algorithm for every stile command, including the save state machine.
+summary: Step-by-step algorithm for every cotype command, including the save state machine.
 domain: spec
 last-updated: 2026-05-03
 depends-on: [spec-data-model, spec-error-taxonomy]
@@ -21,7 +21,7 @@ Pre/postconditions and ordered steps. JSON output shapes live in `spec/api-contr
 
 1. Resolve symlinks: `FILE := os.path.realpath(arg)`.
 2. Reject if `FILE` is not a regular file → `UnsupportedFile`.
-3. Compute `sidecar := dirname(FILE)/.basename(FILE).stile`.
+3. Compute `sidecar := dirname(FILE)/.basename(FILE).cotype`.
 
 Mutating commands (`init`, `open`, `save`, `resolve`) THEN:
 

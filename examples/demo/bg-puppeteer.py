@@ -2,19 +2,19 @@
 """Drive Emacs via `tmux send-keys` to simulate a human user editing
 the `## spec` section.
 
-Unlike the previous one-shot `M-x stile-demo-add-spec` flow, this
+Unlike the previous one-shot `M-x cotype-demo-add-spec` flow, this
 typist actually pecks at the keyboard: per-character `tmux send-keys -l
 <ch>` calls with a small inter-character delay. The viewer sees the
 text appear letter by letter inside Emacs, which makes the `user` role
 visible and obvious.
 
 Sequence per round:
-  1. `M-x stile-demo-position-for-spec RET`
+  1. `M-x cotype-demo-position-for-spec RET`
        -- a small elisp helper in demo-init.el moves point to the end
           of the `## spec` bullet list and pre-types the leading "- ".
   2. Type the bullet text, char by char.
-  3. `C-x C-s` -- save the buffer; stile-mode routes the write through
-     `stile save`.
+  3. `C-x C-s` -- save the buffer; cotype-mode routes the write through
+     `cotype save`.
 
 The puppeteer's stdout doubles as the "user" pane content.
 
@@ -61,11 +61,11 @@ def type_human(pane: str, text: str, delay: float = KEY_DELAY) -> None:
 def add_bullet(pane: str, text: str) -> None:
     # 1. invoke the position helper -- cursor lands at end of ## spec,
     #    "- " prefix already in place.
-    send(pane, "M-x", "stile-demo-position-for-spec", "Enter")
+    send(pane, "M-x", "cotype-demo-position-for-spec", "Enter")
     time.sleep(PRE_TYPE_PAUSE)
     # 2. type the bullet text visibly.
     type_human(pane, text)
-    # 3. save through stile-mode.
+    # 3. save through cotype-mode.
     time.sleep(0.2)
     send(pane, "C-x", "C-s")
 

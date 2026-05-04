@@ -1,15 +1,15 @@
-"""`stile init FILE` -- create sidecar layout and capture the first base.
+"""`cotype init FILE` -- create sidecar layout and capture the first base.
 
 Spec refs: kb/spec/algorithms.md#init
 Properties enforced: P11 (idempotent), P5 (byte-exact hash), P6 (locked).
 """
 from __future__ import annotations
 
-from stile.errors import InvalidUtf8, IoError
-from stile.hash import hash_bytes
-from stile.lock import sidecar_lock
-from stile.paths import relpath_from_sidecar, resolve_target, sidecar_dir
-from stile.store import (
+from cotype.errors import InvalidUtf8, IoError
+from cotype.hash import hash_bytes
+from cotype.lock import sidecar_lock
+from cotype.paths import relpath_from_sidecar, resolve_target, sidecar_dir
+from cotype.store import (
     State,
     ensure_layout,
     read_state,

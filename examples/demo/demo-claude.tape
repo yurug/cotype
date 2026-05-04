@@ -32,7 +32,7 @@ Sleep 12000ms
 # Round 2 (puppeteer T~12 s): the `user` pane shows
 #     ✎ typing in ## spec…
 #     "Reject non-integer input with ValueError."
-# while the puppeteer hits M-x stile-demo-position-for-spec and then
+# while the puppeteer hits M-x cotype-demo-position-for-spec and then
 # pecks the bullet text char-by-char into the spec section of Emacs
 # (~2-3 s of visible typing), then C-x C-s. `code` rewrites the body
 # to validate; tests adds a try/except assertion; docs updates

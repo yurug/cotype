@@ -1,15 +1,15 @@
-"""Tests for stile.commands.catbase."""
+"""Tests for cotype.commands.catbase."""
 from __future__ import annotations
 
 from pathlib import Path
 
 import pytest
 
-from stile.commands.catbase import cmd_catbase
-from stile.commands.init import cmd_init
-from stile.commands.open_ import cmd_open
-from stile.commands.save import cmd_save
-from stile.errors import UnknownBase, UnmanagedFile
+from cotype.commands.catbase import cmd_catbase
+from cotype.commands.init import cmd_init
+from cotype.commands.open_ import cmd_open
+from cotype.commands.save import cmd_save
+from cotype.errors import UnknownBase, UnmanagedFile
 
 
 def test_catbase_returns_explicit_base_bytes(tmp_path: Path):

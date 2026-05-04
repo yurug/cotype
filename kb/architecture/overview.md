@@ -23,11 +23,11 @@ directory.
 cli/
   pyproject.toml
   README.md
-  stile/
+  cotype/
     __init__.py           # version constant
-    __main__.py           # python -m stile -> cli.main()
+    __main__.py           # python -m cotype -> cli.main()
     cli.py                # argparse wiring + dispatch + JSON envelope
-    errors.py             # StileError hierarchy + name <-> exit-code table
+    errors.py             # CotypeError hierarchy + name <-> exit-code table
     hash.py               # H(b) -> "sha256:<hex>"; helpers to split/validate
     paths.py              # FILE -> sidecar paths; relative-path helpers; sidecar validation
     lock.py               # contextmanager: flock(LOCK_EX) on <sidecar>/lock
@@ -86,7 +86,7 @@ Rules:
 ## Error hierarchy
 
 ```
-StileError(Exception)
+CotypeError(Exception)
  ├── UsageError                # exit 2
  ├── UnsupportedFile           # exit 3
  ├── UnmanagedFile             # exit 3
@@ -111,7 +111,7 @@ cli.main(argv)
       result_dict = cmd_<name>(args)
       emit_success(result_dict, json=args.json)
       return 0
-  except StileError as e:
+  except CotypeError as e:
       emit_error(e, json=args.json)
       return e.exit_code
   except OSError as e:

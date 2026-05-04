@@ -1,4 +1,4 @@
-"""CLI smoke tests via `python -m stile`."""
+"""CLI smoke tests via `python -m cotype`."""
 from __future__ import annotations
 
 import json
@@ -11,7 +11,7 @@ def run_cli(
     args: list[str], stdin: bytes = b""
 ) -> tuple[int, bytes, bytes]:
     proc = subprocess.run(
-        [sys.executable, "-m", "stile", *args],
+        [sys.executable, "-m", "cotype", *args],
         input=stdin,
         capture_output=True,
     )

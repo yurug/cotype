@@ -9,8 +9,8 @@ from __future__ import annotations
 from typing import ClassVar
 
 
-class StileError(Exception):
-    """Base for every stile-raised error.
+class CotypeError(Exception):
+    """Base for every cotype-raised error.
 
     Each subclass carries:
         name      -- the stable string used in JSON `error` payloads.
@@ -20,50 +20,50 @@ class StileError(Exception):
     subclass overrides both.
     """
 
-    name: ClassVar[str] = "StileError"
+    name: ClassVar[str] = "CotypeError"
     exit_code: ClassVar[int] = 6
 
 
-class UsageError(StileError):
+class UsageError(CotypeError):
     name = "UsageError"
     exit_code = 2
 
 
-class UnsupportedFile(StileError):
+class UnsupportedFile(CotypeError):
     name = "UnsupportedFile"
     exit_code = 3
 
 
-class UnmanagedFile(StileError):
+class UnmanagedFile(CotypeError):
     name = "UnmanagedFile"
     exit_code = 3
 
 
-class CorruptSidecar(StileError):
+class CorruptSidecar(CotypeError):
     name = "CorruptSidecar"
     exit_code = 3
 
 
-class UnknownBase(StileError):
+class UnknownBase(CotypeError):
     name = "UnknownBase"
     exit_code = 4
 
 
-class ConflictPending(StileError):
+class ConflictPending(CotypeError):
     name = "ConflictPending"
     exit_code = 5
 
 
-class IoError(StileError):
+class IoError(CotypeError):
     name = "IoError"
     exit_code = 6
 
 
-class MergeToolError(StileError):
+class MergeToolError(CotypeError):
     name = "MergeToolError"
     exit_code = 7
 
 
-class InvalidUtf8(StileError):
+class InvalidUtf8(CotypeError):
     name = "InvalidUtf8"
     exit_code = 3

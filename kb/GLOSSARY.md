@@ -1,7 +1,7 @@
 ---
 id: glossary
 type: glossary
-summary: Canonical names for every domain term used across the stile KB.
+summary: Canonical names for every domain term used across the cotype KB.
 domain: meta
 last-updated: 2026-05-03
 depends-on: []
@@ -20,7 +20,7 @@ Terms that appear in more than one KB file. File-local terms are defined inline.
 ## Terms
 
 - **target file (FILE)**: the regular UTF-8 text file under management. The thing readers read. Always a real path (symlinks resolved).
-- **sidecar**: the directory `dirname(FILE)/.basename(FILE).stile` holding stile's auxiliary state (lock, state.json, bases, conflicts, tmp). See `spec/data-model.md`.
+- **sidecar**: the directory `dirname(FILE)/.basename(FILE).cotype` holding cotype's auxiliary state (lock, state.json, bases, conflicts, tmp). See `spec/data-model.md`.
 - **base / base snapshot**: the bytes the caller observed at the start of an edit, captured by `open` and stored content-addressed in `bases/<hex>`. The common ancestor of a 3-way merge.
 - **current**: the bytes presently on disk in the target file. Re-read every time a command needs them — never trusted from `last_known_sha`.
 - **proposed**: the bytes the caller wants written, supplied via stdin to `save` or `resolve`.
@@ -33,7 +33,7 @@ Terms that appear in more than one KB file. File-local terms are defined inline.
 - **pending conflict**: an unresolved 3-way conflict. Blocks ordinary `save` until cleared by `resolve`. State lives in `state.json` and `conflicts/<id>/`.
 - **conflict id**: opaque identifier for a pending conflict. UUID v4 hex (no dashes).
 - **atomic replace**: the rename-based protocol that swaps `FILE` with new bytes in one filesystem-visible step (tmp -> fsync -> rename -> fsync parent). See `spec/algorithms.md` and `external/posix-fs.md`.
-- **advisory lock**: an `fcntl.flock(LOCK_EX)` on `.stile/lock`. Cooperatively serialises mutating commands. Does not prevent direct writes by ill-behaved actors.
+- **advisory lock**: an `fcntl.flock(LOCK_EX)` on `.cotype/lock`. Cooperatively serialises mutating commands. Does not prevent direct writes by ill-behaved actors.
 - **mode (save mode)**: one of `direct`, `merged`, `noop` — see `spec/algorithms.md#save`.
 - **stable error name**: one of the strings in `spec/error-taxonomy.md`. Appears verbatim in the JSON `error` field; never localised.
 - **exit code**: integer per SPEC §9 — `0 success | 1 conflict | 2 usage | 3 unmanaged/corrupt | 4 unknown base | 5 pending conflict | 6 io | 7 merge tool`.

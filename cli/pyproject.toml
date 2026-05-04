@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "stile"
+name = "cotype"
 version = "0.2.0"
 description = "Universal safe-save for concurrent text files — let a user and one or more AI agents edit the same file together without lost updates."
 requires-python = ">=3.11"
@@ -28,17 +28,17 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage      = "https://github.com/yurug/stile"
-Repository    = "https://github.com/yurug/stile"
-Issues        = "https://github.com/yurug/stile/issues"
-Changelog     = "https://github.com/yurug/stile/blob/main/CHANGELOG.md"
-Documentation = "https://github.com/yurug/stile/tree/main/kb"
+Homepage      = "https://github.com/yurug/cotype"
+Repository    = "https://github.com/yurug/cotype"
+Issues        = "https://github.com/yurug/cotype/issues"
+Changelog     = "https://github.com/yurug/cotype/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/yurug/cotype/tree/main/kb"
 
 [project.scripts]
-stile = "stile.cli:main"
+cotype = "cotype.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["stile*"]
+include = ["cotype*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

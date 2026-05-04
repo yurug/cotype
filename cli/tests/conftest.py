@@ -1,18 +1,18 @@
-"""Shared pytest fixtures for stile tests."""
+"""Shared pytest fixtures for cotype tests."""
 from __future__ import annotations
 
 from pathlib import Path
 
 import pytest
 
-from stile.commands.init import cmd_init
-from stile.commands.open_ import cmd_open
-from stile.commands.save import cmd_save
+from cotype.commands.init import cmd_init
+from cotype.commands.open_ import cmd_open
+from cotype.commands.save import cmd_save
 
 
 @pytest.fixture
 def text_file(tmp_path: Path) -> Path:
-    """A regular text file with simple content, NOT yet managed by stile."""
+    """A regular text file with simple content, NOT yet managed by cotype."""
     p = tmp_path / "file.txt"
     p.write_text("hello\nworld\n", encoding="utf-8")
     return p
