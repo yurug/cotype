@@ -48,23 +48,38 @@
 ;; existing `## agent:...' header. The puppeteer then types the
 ;; message char-by-char and hits C-x C-s.
 (defun stile-demo-position-for-user ()
-  "Position point on a fresh blank line at the end of `## user' content."
+  "Position point on a fresh blank line at the end of `## user' content.
+If the buffer doesn't yet contain `## user' (e.g., it was loaded
+before the on-disk template existed), revert it from disk first.
+If even after that there's no `## user' header, abort with a clear
+message rather than typing at point-min and corrupting the file."
   (interactive)
-  (goto-char (point-min))
-  (when (re-search-forward "^## user[[:space:]]*$" nil t)
+  (let ((find-user
+         (lambda ()
+           (goto-char (point-min))
+           (re-search-forward "^## user[[:space:]]*$" nil t))))
+    (unless (funcall find-user)
+      ;; Buffer is stale relative to disk; pull the template in and retry.
+      (when (and (buffer-file-name) (file-readable-p (buffer-file-name)))
+        (revert-buffer 'ignore-auto 'no-confirm 'preserve-modes)
+        (when (boundp 'stile--ensure-auto-revert)
+          (stile--ensure-auto-revert)))
+      (unless (funcall find-user)
+        (user-error
+         "stile-demo-position-for-user: no `## user' header in buffer; \
+refusing to type at point-min")))
+    ;; We're now at the end of `## user'. Find the next section header
+    ;; (or EOF), walk back over trailing blank lines, and land on a
+    ;; fresh blank line right after the user's last non-blank content.
     (let ((next-section
            (save-excursion
              (if (re-search-forward "^## " nil t)
                  (line-beginning-position)
                (point-max)))))
-      ;; Walk back from the next section header (or EOF) past trailing
-      ;; blank lines to find the last non-blank line of the user section.
       (goto-char next-section)
       (when (> (point) (point-min)) (forward-line -1))
       (while (and (> (point) (point-min))
                   (looking-at "^[[:space:]]*$"))
         (forward-line -1))
       (end-of-line)
-      ;; Insert a blank line + a fresh line for typing. Point ends up on
-      ;; the new empty line, ready for the puppeteer's first character.
       (insert "\n\n"))))
