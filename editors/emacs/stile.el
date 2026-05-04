@@ -246,21 +246,32 @@ Emacs' default file-write."
 (defun stile-resolve ()
   "Clear the pending conflict by accepting the buffer's current contents.
 Run this after editing out the diff3 `<<<<<<<' / `>>>>>>>' markers.
-If the buffer is modified, it is written to disk first (bypassing the
-ordinary `stile save' path -- which would be rejected while a conflict
-is pending) and then `stile resolve' is called."
+The buffer is unconditionally written to disk first (bypassing the
+ordinary `stile save' path, which would be rejected while a conflict
+is pending), so the CLI sees the user's intended resolution rather
+than whatever stale bytes live on disk."
   (interactive)
   (unless (buffer-file-name)
     (user-error "Buffer has no associated file"))
   (let ((file (buffer-file-name)))
-    (when (buffer-modified-p)
-      ;; `stile resolve' reads FILE off disk; flush the buffer there
-      ;; without going through `stile--save-via-stile' (which would
-      ;; raise ConflictPending).
-      (let ((write-contents-functions nil))
-        (write-region (point-min) (point-max) file nil 'no-message))
-      (set-buffer-modified-p nil)
-      (set-visited-file-modtime))
+    ;; Refuse if the user hasn't finished editing -- jump point to the
+    ;; first remaining marker so they can fix it.
+    (save-excursion
+      (goto-char (point-min))
+      (when (re-search-forward "^<<<<<<< " nil t)
+        (let ((line (line-number-at-pos (match-beginning 0))))
+          (goto-char (match-beginning 0))
+          (user-error
+           "Buffer still has a conflict marker at line %d -- edit it out first"
+           line))))
+    ;; Flush the buffer unconditionally. If buffer == disk, this is a
+    ;; no-op write; if disk is stale (e.g. an agent wrote markers
+    ;; between the user opening the file and this command), the
+    ;; user's buffer is the truth.
+    (let ((write-contents-functions nil))
+      (write-region (point-min) (point-max) file nil 'no-message))
+    (set-buffer-modified-p nil)
+    (set-visited-file-modtime)
     (let* ((resp (stile--call-json "resolve" file "--json"))
            (exit (car resp))
            (data (cdr resp)))
