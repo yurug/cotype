@@ -95,6 +95,26 @@ whatever signature Emacs uses for this function across versions."
 (advice-add 'ask-user-about-supersession-threat :around
             #'stile--silence-supersession)
 
+(defun stile--refresh-modtime-before-basic-save (orig &rest args)
+  "Refresh `visited-file-modtime' before `basic-save-buffer' checks it.
+Without this, C-x C-s in a stile-mode buffer whose file was just
+written by an agent triggers the standard `FILE has changed since
+visited or saved.  Save anyway?' prompt -- because `basic-save-buffer'
+calls `verify-visited-file-modtime' BEFORE running
+`write-contents-functions', so our `stile--save-via-stile' hook can't
+suppress it from inside.
+
+stile coordinates concurrent saves through its 3-way merge; the
+mismatch is expected and the prompt is pure friction. Bumping the
+recorded modtime to the file's actual mtime makes the check pass and
+hands control to the save hooks where stile takes over."
+  (when (and (boundp 'stile-mode) stile-mode (buffer-file-name))
+    (set-visited-file-modtime))
+  (apply orig args))
+
+(advice-add 'basic-save-buffer :around
+            #'stile--refresh-modtime-before-basic-save)
+
 
 ;; -- low-level subprocess helpers -------------------------------------------
 
