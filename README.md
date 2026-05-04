@@ -8,12 +8,16 @@
 processes) collaborate on the **same text file at the same time** without losing
 anyone's edits. The file is the workspace; `stile` is what makes every save safe.
 
-```text
-open  = capture the current file as a base snapshot
-save  = serialize a proposed new version against that base
-merge = 3-way merge when the file changed meanwhile
-fail  = make conflicts explicit, never overwrite silently
-```
+A six-command tour:
+
+| Command          | What it does |
+|------------------|--------------|
+| `stile init`     | Start managing FILE: create the sidecar and capture the current contents as the first base snapshot. |
+| `stile open`     | Capture a fresh base snapshot before you edit (or before your agent does). Returns `base_sha` and a `base_path` to read the bytes from. |
+| `stile save`     | Submit a proposed new version against a base. Outcome is `direct` (clean write), `merged` (3-way merge), `noop` (proposed equals current), or `conflict` (overlapping edits, FILE left unchanged, forensic dump on disk). |
+| `stile status`   | Report whether FILE is `unmanaged`, `clean`, or `conflicted` (with the pending conflict id). |
+| `stile resolve`  | Accept a resolution for a pending conflict: either `--conflict-id ID < bytes` or the `--use-merged` shortcut after editing the merged file. |
+| `stile cat-base` | Print a base snapshot's bytes to stdout (useful in shell pipelines: `stile cat-base FILE \| my-agent \| stile save FILE --base-sha …`). |
 
 ## Use case: a file as the conversation
 
