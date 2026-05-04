@@ -47,6 +47,12 @@ INTERVAL="${INTERVAL:-1}"
 # (e.g. `claude-haiku-4-5-20251001` for max speed, or unset/empty to let
 # the claude CLI pick its own default).
 CLAUDE_MODEL="${CLAUDE_MODEL:-claude-sonnet-4-6}"
+# Per-agent startup-phase offset in seconds. Agent N waits `idx * STAGGER`
+# before its first poll, so agent 1 typically sees agent 0's first reply
+# already on disk, agent 2 sees agents 0 and 1's, etc. Drives the feel of
+# a conversation rather than a chorus. Should be ~ one Claude turn so
+# the previous agent has actually replied by the time the next looks.
+STAGGER="${STAGGER:-3}"
 
 for tool in stile claude jq python3; do
     command -v "$tool" >/dev/null || { echo "$tool not on PATH" >&2; exit 2; }
@@ -93,13 +99,15 @@ agent() {
     local total="$3"
     local last_sha=""
 
-    # Stagger startup phase: agent N of M sleeps (N * INTERVAL / M)
-    # seconds before its first iteration. With 3 agents at 5s interval
-    # this puts them on phases 0s, ~1.67s, ~3.33s instead of all
-    # firing on the same 0s/5s/10s ticks.
-    local stagger
-    stagger=$(awk "BEGIN { printf \"%.3f\", $idx * $INTERVAL / $total }")
-    sleep "$stagger"
+    # Stagger startup phase by `idx * STAGGER` seconds so each agent
+    # opens at a distinct moment. With STAGGER ~ one Claude turn, agent
+    # N typically sees the previous N-1 agents' replies already on disk
+    # when it first opens, producing a chained conversation rather than
+    # N parallel monologues at the same base.
+    sleep "$(awk "BEGIN { printf \"%.3f\", $idx * $STAGGER }")"
+    # `total` only used for legacy phase math; keep it referenced so
+    # `set -u` is happy if a future change wants it back.
+    : "$total"
 
     while true; do
         # Idle while a conflict is pending: no save can succeed and the
@@ -131,6 +139,8 @@ agent() {
         prompt="You are agent:$role collaborating with a human user and other agents on a shared Markdown file. Each participant owns exactly ONE section: \`## user\`, \`## agent:$role\`, and one \`## agent:<other>\` per other agent.
 
 Your section is \`## agent:$role\`. Its body initially contains a placeholder line; when you have something to say AS $role, replace the placeholder (or your previous reply) with your new reply.
+
+Be terse. Aim for 2-3 short sentences or a small bullet list, well under 80 words. The other agents and the user are watching the file in real time -- a long monologue blocks the conversation.
 
 You can ignore the contents of the OTHER \`## agent:<other>\` sections in your output -- the harness will splice ONLY your own section's body back into the file. Anything you write outside \`## agent:$role\`'s body will be discarded.
 
