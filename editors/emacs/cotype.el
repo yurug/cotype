@@ -1,10 +1,11 @@
-;;; cotype.el --- Emacs integration for cotype  -*- lexical-binding: t; -*-
+;;; cotype.el --- Concurrent safe-save for shared text files  -*- lexical-binding: t; -*-
 
 ;; Copyright (c) 2026 Yann Régis-Gianas
 ;; SPDX-License-Identifier: MIT
 
-;; Author: Yann Régis-Gianas <yann@regis-gianas.org>
-;; URL: https://github.com/yurug/cotype
+;; Author:     Yann Régis-Gianas <yann@regis-gianas.org>
+;; Maintainer: Yann Régis-Gianas <yann@regis-gianas.org>
+;; URL:        https://github.com/yurug/cotype
 ;; Package-Requires: ((emacs "27.1"))
 ;; Version: 0.2.0
 ;; Keywords: tools, files, vc
@@ -75,12 +76,17 @@ auto-revert state we set up, not a user's pre-existing setting.")
 ;; lags the file's actual mtime until auto-revert (or our own programmatic
 ;; revert) catches up. If the user types in that window, Emacs fires
 ;; `ask-user-about-supersession-threat' -- the "FILE has changed since
-;; visited; really edit?" prompt. In a cotype-mode buffer that prompt is
-;; pure noise: cotype's 3-way merge already coordinates concurrent saves,
-;; and the buffer will auto-revert on the next file-notify tick.
+;; visited; really edit?" prompt. C-x C-s hits a separate, equivalent
+;; check inside `basic-save-buffer'. In a cotype-mode buffer both
+;; prompts are pure noise: cotype's 3-way merge already coordinates
+;; concurrent saves, and the buffer will auto-revert on the next
+;; file-notify tick.
 ;;
-;; We suppress the prompt by advising the threat function to refresh the
-;; visited-file-modtime instead, only for cotype-mode buffers.
+;; The advices below short-circuit both checks for cotype-mode buffers
+;; only; non-cotype buffers fall through to the upstream behaviour
+;; unchanged. The advice is installed lazily on the first cotype-mode
+;; activation (idempotent), to avoid modifying Emacs core at file load
+;; time even when no buffer ever uses the mode.
 
 (defun cotype--silence-supersession (orig &rest args)
   "Refresh visited-file-modtime instead of prompting in cotype-mode buffers.
@@ -92,28 +98,35 @@ whatever signature Emacs uses for this function across versions."
       (set-visited-file-modtime)
     (apply orig args)))
 
-(advice-add 'ask-user-about-supersession-threat :around
-            #'cotype--silence-supersession)
-
 (defun cotype--refresh-modtime-before-basic-save (orig &rest args)
   "Refresh `visited-file-modtime' before `basic-save-buffer' checks it.
 Without this, C-x C-s in a cotype-mode buffer whose file was just
-written by an agent triggers the standard `FILE has changed since
-visited or saved.  Save anyway?' prompt -- because `basic-save-buffer'
+written by an agent triggers the standard \"FILE has changed since
+visited or saved.  Save anyway?\" prompt -- because `basic-save-buffer'
 calls `verify-visited-file-modtime' BEFORE running
-`write-contents-functions', so our `cotype--save-via-cotype' hook can't
-suppress it from inside.
+`write-contents-functions', so our `cotype--save-via-cotype' hook
+can't suppress it from inside.
 
-cotype coordinates concurrent saves through its 3-way merge; the
-mismatch is expected and the prompt is pure friction. Bumping the
-recorded modtime to the file's actual mtime makes the check pass and
-hands control to the save hooks where cotype takes over."
+ORIG is the wrapped `basic-save-buffer'; ARGS are forwarded
+unchanged.  Non-cotype buffers fall through directly to ORIG."
   (when (and (boundp 'cotype-mode) cotype-mode (buffer-file-name))
     (set-visited-file-modtime))
   (apply orig args))
 
-(advice-add 'basic-save-buffer :around
-            #'cotype--refresh-modtime-before-basic-save)
+(defvar cotype--global-advice-installed nil
+  "Non-nil once `cotype-mode' has installed its modtime-prompt advices.
+The advices are installed on first `cotype-mode' activation and left
+in place; `advice-add' is idempotent on the same function reference,
+so we only need to do this once per Emacs session.")
+
+(defun cotype--install-global-advice ()
+  "Install the modtime-prompt-suppression advices.  Idempotent."
+  (unless cotype--global-advice-installed
+    (advice-add 'ask-user-about-supersession-threat :around
+                #'cotype--silence-supersession)
+    (advice-add 'basic-save-buffer :around
+                #'cotype--refresh-modtime-before-basic-save)
+    (setq cotype--global-advice-installed t)))
 
 
 ;; -- low-level subprocess helpers -------------------------------------------
@@ -371,6 +384,9 @@ state with \\[cotype-resolve]."
      ((buffer-modified-p)
       (message "cotype-mode: buffer has unsaved changes; not enabling"))
      (t
+      ;; Install the global modtime-prompt advices the first time
+      ;; cotype-mode is enabled in any buffer.
+      (cotype--install-global-advice)
       (add-hook 'write-contents-functions
                 #'cotype--save-via-cotype nil 'local)
       ;; Co-edit hygiene: agents writing the file should appear in the
