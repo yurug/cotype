@@ -5,13 +5,16 @@
 # file content, and submits the response through `stile save`. The
 # 3-way merge serialises concurrent edits across actors.
 #
-# Conflict-avoidance protocol (best-effort, not enforced):
-#   - On startup we pre-allocate `## user` and one `## agent:<role>`
-#     header per agent, separated by a blank line. This gives diff3
-#     stable anchors so two simultaneous saves don't end up appending
-#     adjacent text at end-of-file (the worst case for diff3).
-#   - The prompt tells each agent it owns ONLY its `## agent:<role>`
-#     section's body and must preserve every other byte verbatim.
+# Conflict-avoidance protocol (enforced -- not "please be careful"):
+#   - On startup we pre-allocate `## user` plus one `## agent:<role>`
+#     section per agent (each with a unique placeholder body), so the
+#     file structure exists from cycle 0.
+#   - After Claude returns its take on the whole file, we DO NOT trust
+#     it byte-for-byte. We parse out only the agent's own section body
+#     and splice it back into the bytes we read from `base_path`. Every
+#     byte outside the agent's section is, by construction, identical
+#     to what stile captured as the base. Two agents editing two
+#     different sections therefore cannot produce a 3-way conflict.
 #   - Agent startup is staggered across the polling INTERVAL so the N
 #     agents fire on N different phases instead of all on the same tick.
 #
@@ -41,7 +44,7 @@ FILE="$1"; shift
 ROLES=("$@")
 INTERVAL="${INTERVAL:-5}"
 
-for tool in stile claude jq; do
+for tool in stile claude jq python3; do
     command -v "$tool" >/dev/null || { echo "$tool not on PATH" >&2; exit 2; }
 done
 
@@ -121,52 +124,129 @@ agent() {
         local file_content
         file_content=$(cat "$base_path")
         local prompt
-        prompt="You are agent:$role collaborating with a human user and other agents on a shared Markdown file managed by stile (which 3-way-merges concurrent saves).
+        prompt="You are agent:$role collaborating with a human user and other agents on a shared Markdown file. Each participant owns exactly ONE section: \`## user\`, \`## agent:$role\`, and one \`## agent:<other>\` per other agent.
 
-PROTOCOL (follow byte-exactly to avoid merge conflicts):
-1. Your section is \`## agent:$role\`. Its body initially contains the placeholder line \`_(no reply from $role yet)_\` between two blank lines.
-2. When you have something new to say AS $role, replace the placeholder line (or your previous reply, if you've already replied) with your reply. Keep exactly one blank line above and one blank line below the body, matching the surrounding sections.
-3. Every other byte of the file -- the \`## user\` header and body, every other \`## agent:<role>\` header and body INCLUDING their placeholder lines, every blank line and every space outside your section's body -- MUST be preserved byte-for-byte. Do NOT reformat, reorder, fix typos, normalise whitespace, add or remove blank lines, or change anything outside your own section's body.
-4. If the user or another agent has not asked for your input AS $role since your last reply, output the file UNCHANGED, byte-for-byte (including any placeholders in OTHER agents' sections).
+Your section is \`## agent:$role\`. Its body initially contains a placeholder line; when you have something to say AS $role, replace the placeholder (or your previous reply) with your new reply.
 
-Output ONLY the entire new file content. No preamble, no code fences, no commentary.
+You can ignore the contents of the OTHER \`## agent:<other>\` sections in your output -- the harness will splice ONLY your own section's body back into the file. Anything you write outside \`## agent:$role\`'s body will be discarded.
+
+If neither the user nor another agent has asked for your input AS $role since your last reply, leave \`## agent:$role\`'s body unchanged.
+
+Output the entire file (it's the simplest format), no preamble, no code fences, no commentary.
 
 <file>
 $file_content
 </file>"
-        proposed=$(claude --print -p "$prompt") || \
-            { echo "[$role] claude failed" >&2; sleep "$INTERVAL"; continue; }
+        local tmp_claude tmp_spliced
+        tmp_claude=$(mktemp -t stile-claude.XXXXXX)
+        tmp_spliced=$(mktemp -t stile-spliced.XXXXXX)
+        # shellcheck disable=SC2064
+        trap "rm -f '$tmp_claude' '$tmp_spliced'" RETURN
 
-        # Defensively strip a single layer of ``` ... ``` if Claude
-        # wrapped the whole file (it sometimes does even when told not to).
-        if [[ "$proposed" == '```'* && "$proposed" == *'```' ]]; then
-            proposed=$(printf '%s' "$proposed" | sed -e '1d' -e '$d')
+        if ! claude --print -p "$prompt" > "$tmp_claude"; then
+            echo "[$role] claude failed" >&2
+            rm -f "$tmp_claude" "$tmp_spliced"
+            sleep "$INTERVAL"
+            continue
         fi
 
         # Skip if Claude returned nothing useful (avoids zero-byte saves
         # that would empty the file).
-        if [[ -z "$(printf '%s' "$proposed" | tr -d '[:space:]')" ]]; then
+        if [[ -z "$(tr -d '[:space:]' < "$tmp_claude")" ]]; then
             printf '[%-12s] empty response, skipped\n' "agent:$role"
+            rm -f "$tmp_claude" "$tmp_spliced"
             last_sha=$base_sha
             sleep "$INTERVAL"
             continue
         fi
 
-        # Skip if Claude returned the file byte-identical to what we sent
-        # (i.e. the agent has nothing new to say). Without this guard, a
-        # "noop" save with trivial whitespace drift from Claude can race
-        # with another agent's concurrent body insert -- diff3 then sees
-        # two near-adjacent edits and conflicts. Treating semantic noops
-        # as no-save-at-all eliminates that whole failure mode.
-        if [[ "$proposed" == "$file_content" ]]; then
-            printf '[%-12s] no change, skipped\n' "agent:$role"
-            last_sha=$base_sha
-            sleep "$INTERVAL"
-            continue
-        fi
+        # Splice ONLY the agent's section body from Claude's output back
+        # into the bytes we read from base_path. Exit codes:
+        #   0  -> tmp_spliced contains the new file content (real change)
+        #   42 -> no semantic change (skip the save)
+        #   1  -> splice error (Claude returned malformed structure)
+        local splice_rc=0
+        python3 - "$base_path" "$tmp_claude" "$tmp_spliced" "$role" <<'PYEOF' || splice_rc=$?
+import sys
 
-        result=$(printf '%s' "$proposed" | stile save "$FILE" \
-            --base-sha "$base_sha" --actor "agent:$role" --json) || true
+base_path, claude_path, out_path, role = sys.argv[1:5]
+hdr = f"## agent:{role}".encode("utf-8")
+
+def split_sections(b: bytes) -> list[list[bytes]]:
+    """Split bytes into sections. A section is a list of lines starting
+    with a `## ` header line; a leading 'preamble' (lines before the first
+    `## `) becomes the first section."""
+    sections: list[list[bytes]] = []
+    current: list[bytes] = []
+    for line in b.split(b"\n"):
+        if line.startswith(b"## "):
+            if current:
+                sections.append(current)
+            current = [line]
+        else:
+            current.append(line)
+    if current:
+        sections.append(current)
+    return sections
+
+def join_sections(secs: list[list[bytes]]) -> bytes:
+    return b"\n".join(b"\n".join(s) for s in secs)
+
+with open(base_path, "rb") as f:
+    base = f.read()
+with open(claude_path, "rb") as f:
+    claude_out = f.read()
+
+# Strip a single layer of ``` ... ``` if Claude wrapped the whole file.
+stripped = claude_out.strip()
+if stripped.startswith(b"```") and stripped.endswith(b"```"):
+    inner = stripped[3:-3]
+    nl = inner.find(b"\n")
+    if nl >= 0:
+        claude_out = inner[nl + 1:]
+
+base_secs = split_sections(base)
+claude_secs = split_sections(claude_out)
+
+base_body = next((s[1:] for s in base_secs if s and s[0] == hdr), None)
+claude_body = next((s[1:] for s in claude_secs if s and s[0] == hdr), None)
+
+if base_body is None:
+    sys.stderr.write(f"section {hdr.decode()} missing in base file\n")
+    sys.exit(1)
+if claude_body is None or claude_body == base_body:
+    sys.exit(42)
+
+out_secs = [
+    ([s[0]] + claude_body) if (s and s[0] == hdr) else s
+    for s in base_secs
+]
+with open(out_path, "wb") as f:
+    f.write(join_sections(out_secs))
+sys.exit(0)
+PYEOF
+        case "$splice_rc" in
+            0) ;;  # fall through to save
+            42)
+                printf '[%-12s] no change in own section, skipped\n' "agent:$role"
+                rm -f "$tmp_claude" "$tmp_spliced"
+                last_sha=$base_sha
+                sleep "$INTERVAL"
+                continue
+                ;;
+            *)
+                printf '[%-12s] splice failed (rc=%s)\n' "agent:$role" "$splice_rc"
+                rm -f "$tmp_claude" "$tmp_spliced"
+                last_sha=$base_sha
+                sleep "$INTERVAL"
+                continue
+                ;;
+        esac
+
+        result=$(stile save "$FILE" \
+            --base-sha "$base_sha" --actor "agent:$role" --json \
+            < "$tmp_spliced") || true
+        rm -f "$tmp_claude" "$tmp_spliced"
 
         local status mode err msg cid
         status=$(printf '%s' "$result" | jq -r '.status // "??"')
