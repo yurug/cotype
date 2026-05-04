@@ -70,6 +70,13 @@ matches what is now on disk."
 We track this so that disabling `cotype-mode' only undoes the
 auto-revert state we set up, not a user's pre-existing setting.")
 
+;; Forward declaration: `cotype-mode' is created by the
+;; `define-minor-mode' form near the bottom of this file, but several
+;; helpers above reference the buffer-local variable.  Without this
+;; declaration the byte-compiler emits "reference to free variable"
+;; warnings.
+(defvar cotype-mode)
+
 
 ;; -- supersession-warning suppression --------------------------------------
 
