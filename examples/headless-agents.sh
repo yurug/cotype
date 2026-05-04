@@ -42,7 +42,11 @@ fi
 
 FILE="$1"; shift
 ROLES=("$@")
-INTERVAL="${INTERVAL:-5}"
+INTERVAL="${INTERVAL:-1}"
+# Defaults to Sonnet for snappier turns; override with `CLAUDE_MODEL=...`
+# (e.g. `claude-haiku-4-5-20251001` for max speed, or unset/empty to let
+# the claude CLI pick its own default).
+CLAUDE_MODEL="${CLAUDE_MODEL:-claude-sonnet-4-6}"
 
 for tool in stile claude jq python3; do
     command -v "$tool" >/dev/null || { echo "$tool not on PATH" >&2; exit 2; }
@@ -143,7 +147,9 @@ $file_content
         # shellcheck disable=SC2064
         trap "rm -f '$tmp_claude' '$tmp_spliced'" RETURN
 
-        if ! claude --print -p "$prompt" > "$tmp_claude"; then
+        local -a claude_args=(--print -p "$prompt")
+        [[ -n "$CLAUDE_MODEL" ]] && claude_args+=(--model "$CLAUDE_MODEL")
+        if ! claude "${claude_args[@]}" > "$tmp_claude"; then
             echo "[$role] claude failed" >&2
             rm -f "$tmp_claude" "$tmp_spliced"
             sleep "$INTERVAL"
