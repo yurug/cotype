@@ -48,16 +48,20 @@ done
 # Make the file managed by stile if it isn't already (idempotent).
 [[ -f "$FILE" ]] || touch "$FILE"
 
-# Pre-allocate section headers when FILE is empty. With every section
-# header already present (separated by blank lines), each agent's edit
-# lands inside its own pre-existing slot rather than appending at EOF
-# next to every other agent's append -- which is diff3's worst case.
+# Pre-allocate section headers + a unique per-role placeholder body when
+# FILE is empty. The placeholders give diff3 unique unchanged lines as
+# anchors around each section (so concurrent edits to two different
+# agent sections can't get grouped into one diff3 region) and give the
+# agent prompt a clear "replace this exact line" target.
 if ! [[ -s "$FILE" ]]; then
     {
         echo "## user"
         echo
+        echo
         for role in "${ROLES[@]}"; do
             echo "## agent:$role"
+            echo
+            echo "_(no reply from $role yet)_"
             echo
         done
     } > "$FILE"
@@ -120,9 +124,10 @@ agent() {
         prompt="You are agent:$role collaborating with a human user and other agents on a shared Markdown file managed by stile (which 3-way-merges concurrent saves).
 
 PROTOCOL (follow byte-exactly to avoid merge conflicts):
-1. Your section is \`## agent:$role\`. You may edit ONLY the body of that section (the lines between its header and the next \`## \` header, or end-of-file).
-2. Every other byte of the file -- the \`## user\` header and body, every other \`## agent:<role>\` header and body, every blank line and every space -- MUST be preserved byte-for-byte. Do NOT reformat, reorder, fix typos, normalise whitespace, add or remove blank lines, or change anything outside your own section's body.
-3. If the user or another agent has not asked for your input AS $role since your last reply, output the file UNCHANGED, byte-for-byte.
+1. Your section is \`## agent:$role\`. Its body initially contains the placeholder line \`_(no reply from $role yet)_\` between two blank lines.
+2. When you have something new to say AS $role, replace the placeholder line (or your previous reply, if you've already replied) with your reply. Keep exactly one blank line above and one blank line below the body, matching the surrounding sections.
+3. Every other byte of the file -- the \`## user\` header and body, every other \`## agent:<role>\` header and body INCLUDING their placeholder lines, every blank line and every space outside your section's body -- MUST be preserved byte-for-byte. Do NOT reformat, reorder, fix typos, normalise whitespace, add or remove blank lines, or change anything outside your own section's body.
+4. If the user or another agent has not asked for your input AS $role since your last reply, output the file UNCHANGED, byte-for-byte (including any placeholders in OTHER agents' sections).
 
 Output ONLY the entire new file content. No preamble, no code fences, no commentary.
 
@@ -142,6 +147,19 @@ $file_content
         # that would empty the file).
         if [[ -z "$(printf '%s' "$proposed" | tr -d '[:space:]')" ]]; then
             printf '[%-12s] empty response, skipped\n' "agent:$role"
+            last_sha=$base_sha
+            sleep "$INTERVAL"
+            continue
+        fi
+
+        # Skip if Claude returned the file byte-identical to what we sent
+        # (i.e. the agent has nothing new to say). Without this guard, a
+        # "noop" save with trivial whitespace drift from Claude can race
+        # with another agent's concurrent body insert -- diff3 then sees
+        # two near-adjacent edits and conflicts. Treating semantic noops
+        # as no-save-at-all eliminates that whole failure mode.
+        if [[ "$proposed" == "$file_content" ]]; then
+            printf '[%-12s] no change, skipped\n' "agent:$role"
             last_sha=$base_sha
             sleep "$INTERVAL"
             continue
