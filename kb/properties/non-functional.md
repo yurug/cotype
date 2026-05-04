@@ -12,7 +12,7 @@ related: [properties-edge-cases]
 # Non-functional properties
 
 ## One-liner
-Performance, resource, and portability targets. Loose bounds — v0 is correctness-first.
+Performance, resource, and portability targets. Loose bounds — `stile` is correctness-first.
 
 ---
 
@@ -40,7 +40,7 @@ Performance, resource, and portability targets. Loose bounds — v0 is correctne
 
 **Statement.** Peak resident memory is O(file size). A 100 MB FILE save MUST NOT load multiple copies (we read once into bytes; tolerate ~3× while merging).
 
-**Why.** Sanity bound; v0 doesn't promise streaming.
+**Why.** Sanity bound; `stile` does not promise streaming.
 
 **Measure.** Manual check on a 100 MB synthetic file.
 
@@ -48,7 +48,7 @@ Performance, resource, and portability targets. Loose bounds — v0 is correctne
 
 ### NF4 — Disk usage
 
-**Statement.** Each unique base content costs `len(content)` bytes plus a few hundred bytes of metadata. v0 has no GC.
+**Statement.** Each unique base content costs `len(content)` bytes plus a few hundred bytes of metadata. There is no garbage collection at present.
 
 **Why.** Honesty: bases accumulate. Optional `clean` command may garbage-collect later.
 
@@ -58,7 +58,7 @@ Performance, resource, and portability targets. Loose bounds — v0 is correctne
 
 ### NF5 — Portability
 
-**Statement.** Runs on Linux and macOS with Python ≥3.11 and POSIX `diff3`. No Windows support in v0 (pathing, flock semantics differ).
+**Statement.** Runs on Linux and macOS with Python ≥3.11 and POSIX `diff3`. No Windows support (pathing, flock semantics differ).
 
 **Why.** Scope limit; KISS.
 

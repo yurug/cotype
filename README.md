@@ -209,12 +209,20 @@ pattern that loses updates are at [`kb/spec/protocols.md`](kb/spec/protocols.md)
 { "status": "error", "error": "<Name>", "message": "<detail>" }
 ```
 
-## Scope
+## Why it's small
 
-v0 supports regular UTF-8 text files only. Out of scope: network sync,
-multi-user real-time collaboration over a wire, CRDTs, event sourcing,
-semantic edits, multi-file transactions, daemon / watch mode, binary files.
-The full PRD lives at [`kb/domain/prd.md`](kb/domain/prd.md).
+`stile` is the smallest tool that can prevent lost updates: `open`,
+`save`, and a 3-way merge when the base is stale. No daemon, no event
+log, no CRDT, no network sync, no semantic edits, no multi-file
+transactions. The PRD's non-goals list is load-bearing — `stile`
+intentionally does *one* thing.
+
+KISS is not aesthetic here; it is the lever that makes the safety
+claims auditable. Every line of code maps to a property in
+[`kb/properties/functional.md`](kb/properties/functional.md), every
+property has a named test, and the merge engine is POSIX `diff3 -m`
+rather than a hand-rolled merger we'd have to prove correct ourselves.
+The full product brief lives at [`kb/domain/prd.md`](kb/domain/prd.md).
 
 ## Tests
 

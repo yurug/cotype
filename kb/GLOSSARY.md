@@ -25,13 +25,13 @@ Terms that appear in more than one KB file. File-local terms are defined inline.
 - **current**: the bytes presently on disk in the target file. Re-read every time a command needs them — never trusted from `last_known_sha`.
 - **proposed**: the bytes the caller wants written, supplied via stdin to `save` or `resolve`.
 - **merged**: the result of `merge3(base, current, proposed)` when the merge is clean.
-- **3-way merge / `merge3`**: the function `(base, current, proposed) -> Clean(bytes) | Conflict(data)`. v0 implementation: POSIX `diff3 -m`. See `spec/algorithms.md` and `external/diff3.md`.
+- **3-way merge / `merge3`**: the function `(base, current, proposed) -> Clean(bytes) | Conflict(data)`. Implemented as POSIX `diff3 -m`. See `spec/algorithms.md` and `external/diff3.md`.
 - **hash / sha**: `"sha256:" ++ lowercase_hex(SHA256(bytes))`. Byte-exact, no normalisation. See `spec/data-model.md`.
 - **base_sha**: the hash of a base snapshot. Identifies which `bases/<hex>` file the caller is referring to.
 - **base_path**: the path to a base snapshot file. The race-free way for an editor or process to load the bytes the snapshot represents.
 - **actor**: opaque label identifying the caller (e.g. `emacs`, `my-formatter`, `unknown`). Recorded in conflict `meta.json`. Does not affect semantics.
 - **pending conflict**: an unresolved 3-way conflict. Blocks ordinary `save` until cleared by `resolve`. State lives in `state.json` and `conflicts/<id>/`.
-- **conflict id**: opaque identifier for a pending conflict. v0 uses UUID v4 hex (no dashes).
+- **conflict id**: opaque identifier for a pending conflict. UUID v4 hex (no dashes).
 - **atomic replace**: the rename-based protocol that swaps `FILE` with new bytes in one filesystem-visible step (tmp -> fsync -> rename -> fsync parent). See `spec/algorithms.md` and `external/posix-fs.md`.
 - **advisory lock**: an `fcntl.flock(LOCK_EX)` on `.stile/lock`. Cooperatively serialises mutating commands. Does not prevent direct writes by ill-behaved actors.
 - **mode (save mode)**: one of `direct`, `merged`, `noop` — see `spec/algorithms.md#save`.

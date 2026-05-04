@@ -27,7 +27,7 @@ Writing a 3-way line merger from scratch is roughly 200 lines of code that must 
 `merge.py` invokes `diff3 -m PROPOSED BASE CURRENT` via `subprocess.run([...])` (list form, never shell). It interprets:
 
 - Exit 0: Clean merge — stdout is the merged content.
-- Exit 1: Content conflict — stdout has conflict markers; we treat this as the v0 conflict result.
+- Exit 1: Content conflict — stdout has conflict markers; we treat this as the conflict result.
 - Exit ≥2: Tool error (missing, internal failure) — surface as `MergeToolError` (P10).
 
 If `diff3` is missing on `PATH`, we raise `MergeToolError` immediately (no fallback).

@@ -12,7 +12,7 @@ related: [conventions-testing-strategy]
 # Audit checklist
 
 ## One-liner
-Run through this list at end of each implementation slice and at v0-complete. Treat any unchecked critical/high as a blocker.
+Run through this list before each release. Treat any unchecked critical/high as a blocker.
 
 ## Section A — Spec compliance
 
@@ -74,7 +74,7 @@ Run through this list at end of each implementation slice and at v0-complete. Tr
 - [ ] Crash mid-state.json write: state.json was written via atomic-replace, so either old or new is on disk.
 - [ ] flock released on every error path (verify via `pytest -k 'lock and error'`).
 - [ ] Corrupt state.json detected and rejected with `CorruptSidecar`.
-- [ ] Orphan conflict directory (no state reference) — `status` SHOULD warn (optional in v0).
+- [ ] Orphan conflict directory (no state reference) — `status` SHOULD warn (optional, currently deferred).
 
 ## Section G — Simplicity
 

@@ -73,7 +73,7 @@ Skip comments that just restate the code.
 ## Naming
 
 - `snake_case` for functions, modules, variables.
-- `PascalCase` for classes (only `StileError` subclasses in v0).
+- `PascalCase` for classes (only `StileError` subclasses for now).
 - Constants: `SCREAMING_SNAKE`. Defined at module top.
 - Internal helpers: `_leading_underscore`. Public functions: no prefix.
 

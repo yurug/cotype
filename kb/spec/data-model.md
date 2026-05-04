@@ -85,7 +85,7 @@ When a conflict is pending, `pending_conflict` is:
 Notes:
 - `target_path` is stored relative to the sidecar dir; informational only. The actual managed path is implicit (sidecar dir → strip `.` and `.stile`).
 - `last_known_sha` is **advisory**. Truth is always `H(read(FILE))` at command time.
-- `format_version` is reserved for future migrations. v0 always writes `1` and refuses any other value as `CorruptSidecar`.
+- `format_version` is reserved for future migrations. `stile` always writes `1` and refuses any other value as `CorruptSidecar`.
 
 ## conflict meta.json schema
 

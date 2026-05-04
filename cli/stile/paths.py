@@ -15,7 +15,7 @@ from pathlib import Path
 from stile.errors import UnsupportedFile
 
 # Conflict ids are 32 lowercase hex chars (uuid4 hex with dashes stripped).
-# This regex is the v0 contract; anything else is rejected before being used
+# This regex is the wire contract; anything else is rejected before being used
 # in a path -- closes the path-traversal vector through --conflict-id.
 CONFLICT_ID_RE = re.compile(r"^[0-9a-f]{32}$")
 

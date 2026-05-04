@@ -135,6 +135,6 @@ def cmd_resolve(
         st.last_known_sha = sha
         st.pending_conflict = None
         write_state(sidecar, st)
-    # `actor` is informational only; we do not record it on resolve in v0.
+    # `actor` is informational only; we do not record it on resolve.
     _ = actor
     return {"status": "resolved", "file": str(file), "sha": sha}

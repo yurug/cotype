@@ -116,7 +116,7 @@ If you've configured auto-revert globally already, `stile-mode` won't
 toggle it off when you leave the mode. Set `stile-auto-revert` to `nil`
 if you want to drive it yourself.
 
-## Known limitations (v0)
+## Known limitations
 
 - No automated tests.
 - No transient/keymap UI; conflict resolution is `M-x stile-resolve-use-merged`.

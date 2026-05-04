@@ -64,7 +64,7 @@ def test_P5_hash_byte_exactness_random_bytes():
         assert hash_bytes(b) == "sha256:" + hashlib.sha256(b).hexdigest()
 ```
 
-No `hypothesis` (would be a third-party runtime test dep — fine, but stdlib `random` is enough for v0).
+No `hypothesis` (would be a third-party runtime test dep — fine, but stdlib `random` is enough).
 
 ## Atomicity (T10) test pattern
 

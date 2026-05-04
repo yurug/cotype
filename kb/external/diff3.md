@@ -94,7 +94,7 @@ proposed: a\nb\nc\nd\nE\n   # line 5
 ```
 diff3 emits a clean merge (exit 0).
 
-This matches SPEC §8's wording (Clean is **SHOULD** for non-overlapping edits, not MUST). v0 accepts diff3's conservative grouping; we don't try to be smarter.
+This matches SPEC §8's wording (Clean is **SHOULD** for non-overlapping edits, not MUST). `stile` accepts diff3's conservative grouping; we do not try to be smarter.
 
 ## Failure modes
 
@@ -136,7 +136,7 @@ z
 ## Agent notes
 > NEVER invoke via `shell=True`. Always pass args as a list.
 > Capture stdout AND stderr. Stdout is content; stderr is diagnostic.
-> If a future feature needs structured conflict regions, parse the markers — but for v0, dump-as-bytes is enough.
+> If a future feature needs structured conflict regions, parse the markers — but dump-as-bytes is enough.
 
 ## Related files
 - `../architecture/decisions/0002-diff3-for-merge.md`

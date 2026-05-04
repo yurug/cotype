@@ -193,7 +193,7 @@ Each property has: **ID**, **statement**, **violation example**, **why**, **test
 
 ### P15 — `open` returns a base_path that hashes to base_sha
 
-**Statement.** When `open` returns `(base_sha, base_path)`, then `H(read(base_path)) == base_sha` and `base_path` exists. This holds at least until the next mutating command on this sidecar (gc not in v0, so effectively forever).
+**Statement.** When `open` returns `(base_sha, base_path)`, then `H(read(base_path)) == base_sha` and `base_path` exists. This holds at least until the next mutating command on this sidecar (no garbage collection at present, so effectively forever).
 
 **Violation.** `base_path` is wrong, missing, or stores different bytes (e.g. `bases/<hex>` was overwritten).
 

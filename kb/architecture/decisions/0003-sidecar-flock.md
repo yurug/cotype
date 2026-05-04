@@ -37,8 +37,8 @@ Positive:
 - Cross-process serialisation, not just intra-process.
 
 Negative:
-- Advisory only — a misbehaving program that doesn't acquire the flock can still race. Documented; out of v0 threat model.
-- Doesn't work over NFS in older kernels; in v0 we're local-only.
+- Advisory only — a misbehaving program that doesn't acquire the flock can still race. Documented; out of the threat model.
+- Doesn't work over NFS in older kernels; we are local-only.
 
 Rejected alternatives:
 - **`fcntl.lockf`**: byte-range locks have surprising interactions with `os.replace` and `dup2`. flock is simpler.
@@ -65,7 +65,7 @@ Rejected alternatives:
 
 ## Reconsider when
 
-We add network synchronisation or daemon mode. Both are explicitly out of v0 (PRD §5).
+We add network synchronisation or daemon mode. Both are explicitly out of scope (PRD §5).
 
 ## Related files
 - `../overview.md`

@@ -50,7 +50,7 @@ Step 5 requires opening the dir. On Linux: `os.open(parent, os.O_RDONLY)` then `
 - **File-handle scoped**: closing the fd releases the lock. The kernel releases it automatically on process exit, including SIGKILL.
 - **`LOCK_EX`** is exclusive. Blocks until acquired; can be made non-blocking with `LOCK_NB`.
 - **Inheritance**: child processes inherit the lock on `fork()`. Not relevant to us (we don't fork while holding the lock).
-- **Filesystem support**: works on local Linux/macOS filesystems. Older NFS may silently degrade. v0 is local-only.
+- **Filesystem support**: works on local Linux/macOS filesystems. Older NFS may silently degrade. we are local-only.
 
 Why we lock the **sidecar's** `lock` file rather than `FILE`:
 - `FILE` is replaced via `os.replace`, which swaps the inode. The lock-holder is suddenly holding a lock on a stale inode (now unlinked). The replacement is unprotected.
@@ -65,7 +65,7 @@ Why we lock the **sidecar's** `lock` file rather than `FILE`:
 
 - `shutil.copymode(src, dst)` copies mode bits but not owner/group.
 - `os.chown(dst, uid, gid)` requires either matching uid (for non-root) or `CAP_CHOWN`. We attempt it and silently swallow `PermissionError`.
-- xattrs / ACLs are NOT preserved in v0 (out of scope).
+- xattrs / ACLs are NOT preserved (out of scope).
 
 ## Cross-platform note
 

@@ -13,7 +13,7 @@ related: [architecture-overview, adr-0002]
 
 ## Context
 
-`stile` is a v0 CLI focused on correctness and KISS. Implementation candidates: Python, Go, Rust, OCaml. We must pick one before building anything.
+`stile` is a CLI focused on correctness and KISS. Implementation candidates: Python, Go, Rust, OCaml. We must pick one before building anything.
 
 Hot paths in the tool:
 - SHA-256 of file contents (1 KB to ~50 MB)
@@ -40,12 +40,12 @@ Positive:
 - Trivial portability across Linux/macOS.
 
 Negative:
-- ~30–80 ms cold startup per `stile` invocation. Acceptable for editor-paced use; could matter if a caller batches thousands of `save`s (out of scope for v0 — see PRD §5).
+- ~30–80 ms cold startup per `stile` invocation. Acceptable for editor-paced use; could matter if a caller batches thousands of `save`s (out of scope — see PRD §5).
 - Higher memory floor than a Go/Rust binary. Acceptable.
-- No Windows support in v0 (POSIX flock semantics differ; out of scope per NF5).
+- No Windows support (POSIX flock semantics differ; out of scope per NF5).
 
 Rejected alternatives:
-- **Go / Rust**: faster startup, single binary, but adds a build pipeline and requires cross-compilation discipline. Premature optimisation for v0.
+- **Go / Rust**: faster startup, single binary, but adds a build pipeline and requires cross-compilation discipline. Premature optimisation.
 - **OCaml**: type-safe, but build setup and ecosystem friction outweigh KISS for a tool that is mostly side-effects.
 
 ## What this means for implementers

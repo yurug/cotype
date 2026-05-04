@@ -12,7 +12,7 @@ related: [index]
 # Spec — Index
 
 ## One-liner
-Routing for the normative v0 spec. Open the file whose summary answers your question.
+Routing for the normative spec. Open the file whose summary answers your question.
 
 ## Files
 

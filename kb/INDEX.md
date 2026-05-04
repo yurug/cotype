@@ -14,9 +14,9 @@ related: []
 ## What this KB covers
 
 `stile` is a tiny CLI that prevents lost updates when a text file is edited
-concurrently by a human editor and one or more processes. v0 is a deliberately
-small core: `init`, `open`, `save`, `status`, `resolve`, with safe atomic writes
-and 3-way merge via POSIX `diff3`.
+concurrently by a human editor and one or more processes. The core is
+deliberately small: `init`, `open`, `save`, `status`, `resolve`, `cat-base`,
+with safe atomic writes and 3-way merge via POSIX `diff3`.
 
 ## How to use this KB (for agents)
 

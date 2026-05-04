@@ -68,7 +68,7 @@ First public release. Two coupled releases under one tag-namespace:
 
 - Regular UTF-8 text files only.
 - Local-only (no network sync, no daemon mode).
-- POSIX-only (Linux + macOS); Windows is out of v0 scope.
+- POSIX-only (Linux + macOS); Windows support is out of scope.
 - No event sourcing, no CRDT, no semantic edits, no multi-file
   transactions.
 

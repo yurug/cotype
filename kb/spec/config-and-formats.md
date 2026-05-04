@@ -12,7 +12,7 @@ related: [spec-algorithms]
 # Config and on-disk formats
 
 ## One-liner
-Schema of every file stile writes to disk. v0 has no user-editable config — only sidecar artifacts.
+Schema of every file stile writes to disk. There is no user-editable config — only sidecar artifacts.
 
 ## Scope
 File formats only. Algorithms in `spec/algorithms.md`. CLI shapes in `spec/api-contracts.md`.

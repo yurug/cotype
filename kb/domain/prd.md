@@ -1,7 +1,7 @@
 ---
 id: prd
 type: spec
-summary: Authoritative product requirements for stile v0 -- what it is, who uses it, what it must and must not do.
+summary: Authoritative product requirements for stile -- what it is, who uses it, what it must and must not do.
 domain: product
 last-updated: 2026-05-03
 depends-on: [glossary]
@@ -17,7 +17,7 @@ related: [spec-algorithms, properties-functional]
 
 The primary use case is a **shared text file used as the communication medium between a user and one or more agents, in place of a sequential chat**. The user writes; agents read and edit the file in place to respond or to do work; `stile` keeps every actor's view consistent. Disjoint edits auto-merge. Overlapping edits surface as explicit conflicts that the user resolves. There is no chat transcript — the file *is* the workspace.
 
-The v0 product is intentionally simple:
+The product is intentionally simple:
 
 ```text
 open  = capture the current file as a base snapshot
@@ -62,7 +62,7 @@ There is no tiny, universal `safe save` protocol for a normal local text file.
 
 ## 4. Goals
 
-v0 must provide:
+`stile` must provide:
 
 1. Safe concurrent saves for a single regular text file.
 2. Editor-agnostic integration through CLI commands and stdin/stdout.
@@ -72,9 +72,9 @@ v0 must provide:
 6. Explicit conflict output when 3-way merge cannot produce a clean result.
 7. Minimal sidecar storage next to the file.
 
-## 5. Non-goals for v0
+## 5. Non-goals
 
-v0 must not implement:
+`stile` must not implement:
 
 - Network synchronization.
 - Multi-user real-time collaboration.
@@ -266,7 +266,7 @@ Readers of `file.txt` must observe either the old complete file or the new compl
 
 ### I3: Sidecar snapshots are auxiliary
 
-Base snapshots enable 3-way merge. The target file remains a normal file. v0 is not an event-sourced system.
+Base snapshots enable 3-way merge. The target file remains a normal file. `stile` is not an event-sourced system.
 
 ### I4: Conflicts are explicit
 
@@ -274,7 +274,7 @@ On conflict, `file.txt` remains unchanged and a conflict artifact is written. A 
 
 ## 12. MVP scope
 
-Required v0 commands:
+Required commands:
 
 ```text
 init
@@ -284,7 +284,7 @@ status
 resolve
 ```
 
-Optional v0 commands:
+Optional commands:
 
 ```text
 cat-base
@@ -324,7 +324,7 @@ If a conflict is pending, ordinary `save` must reject until `resolve` succeeds.
 
 A script using only `open` and `save` must get the same correctness properties as an editor plugin.
 
-## 14. Future work, explicitly not v0
+## 14. Future work (out of scope)
 
 Possible future versions:
 
@@ -348,7 +348,7 @@ The tool succeeds if it is boring, predictable, and small.
 
 ## Agent notes
 > This is the canonical PRD. Where this disagrees with `spec/` files, defer to `spec/` on normative behaviour and update this file to match.
-> The "Non-goals" list (§5) is load-bearing -- refuse scope creep that pushes any of those items into v0.
+> The "Non-goals" list (§5) is load-bearing -- refuse scope creep that pushes any of those items into the product.
 
 ## Related files
 - `../spec/INDEX.md` -- normative behaviour, decomposed for agent navigation

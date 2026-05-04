@@ -174,7 +174,7 @@ release lock
 return resolved(resolved_sha)
 ```
 
-The conflict directory is **kept** on disk for forensics. v0 does not garbage-collect.
+The conflict directory is **kept** on disk for forensics. There is no garbage collection at present.
 
 ## `merge3` (internal)
 
