@@ -61,10 +61,10 @@ agent() {
         prompt="You are agent:$role working in a Markdown file shared with a human user and other agents. The file is managed by stile (each save goes through a 3-way merge).
 
 - Read the entire current file shown below.
-- If a \`## user\` block, or another agent, has added something that calls for your input AS $role, edit your \`## agent:$role\` section IN PLACE to respond. Replace the body, do not append.
+- If a \`## user\` block, or another agent, has added something that calls for your input AS $role, edit (or append) a \`## agent:$role\` section to respond. If the section already exists, REPLACE its body in place; if it doesn't yet exist, append a new \`## agent:$role\` section AFTER all existing sections.
 - If there is nothing new for you to do, output the file UNCHANGED.
 
-Output ONLY the entire new file content. No preamble, no codefences around the file, no closing remarks.
+Output ONLY the entire new file content. No preamble, no codefences around the whole file, no closing remarks.
 
 <file>
 $file_content
@@ -72,10 +72,45 @@ $file_content
         proposed=$(claude --print -p "$prompt") || \
             { echo "[$role] claude failed" >&2; sleep "$INTERVAL"; continue; }
 
+        # Defensively strip a single layer of ``` ... ``` if Claude
+        # wrapped the whole file (it sometimes does even when told not to).
+        if [[ "$proposed" == '```'* && "$proposed" == *'```' ]]; then
+            proposed=$(printf '%s' "$proposed" | sed -e '1d' -e '$d')
+        fi
+
+        # Skip if Claude returned nothing useful (avoids zero-byte saves
+        # that would empty the file).
+        if [[ -z "$(printf '%s' "$proposed" | tr -d '[:space:]')" ]]; then
+            printf '[%-12s] empty response, skipped\n' "agent:$role"
+            last_sha=$base_sha
+            sleep "$INTERVAL"
+            continue
+        fi
+
         result=$(printf '%s' "$proposed" | stile save "$FILE" \
             --base-sha "$base_sha" --actor "agent:$role" --json) || true
-        mode=$(printf '%s' "$result" | jq -r '.mode // .status' 2>/dev/null || echo "??")
-        printf '[%-12s] %s\n' "agent:$role" "$mode"
+
+        local status mode err msg
+        status=$(printf '%s' "$result" | jq -r '.status // "??"')
+        case "$status" in
+            saved)
+                mode=$(printf '%s' "$result" | jq -r '.mode')
+                printf '[%-12s] save: %s\n' "agent:$role" "$mode"
+                ;;
+            conflict)
+                cid=$(printf '%s' "$result" | jq -r '.conflict_id')
+                printf '[%-12s] conflict %s -- run `stile resolve %s --use-merged` after editing\n' \
+                    "agent:$role" "${cid:0:8}" "$FILE"
+                ;;
+            error)
+                err=$(printf '%s' "$result" | jq -r '.error')
+                msg=$(printf '%s' "$result" | jq -r '.message')
+                printf '[%-12s] error: %s -- %s\n' "agent:$role" "$err" "$msg"
+                ;;
+            *)
+                printf '[%-12s] unexpected: %s\n' "agent:$role" "$result"
+                ;;
+        esac
 
         last_sha=$base_sha
         sleep "$INTERVAL"
