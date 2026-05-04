@@ -69,6 +69,33 @@ We track this so that disabling `stile-mode' only undoes the
 auto-revert state we set up, not a user's pre-existing setting.")
 
 
+;; -- supersession-warning suppression --------------------------------------
+
+;; When an agent writes the file via stile, the buffer's recorded modtime
+;; lags the file's actual mtime until auto-revert (or our own programmatic
+;; revert) catches up. If the user types in that window, Emacs fires
+;; `ask-user-about-supersession-threat' -- the "FILE has changed since
+;; visited; really edit?" prompt. In a stile-mode buffer that prompt is
+;; pure noise: stile's 3-way merge already coordinates concurrent saves,
+;; and the buffer will auto-revert on the next file-notify tick.
+;;
+;; We suppress the prompt by advising the threat function to refresh the
+;; visited-file-modtime instead, only for stile-mode buffers.
+
+(defun stile--silence-supersession (orig &rest args)
+  "Refresh visited-file-modtime instead of prompting in stile-mode buffers.
+Falls through to ORIG (the upstream supersession-threat handler) for
+buffers that don't have `stile-mode' on -- we don't want to silence
+warnings globally. ARGS is forwarded as-is so we stay compatible with
+whatever signature Emacs uses for this function across versions."
+  (if (and (boundp 'stile-mode) stile-mode (buffer-file-name))
+      (set-visited-file-modtime)
+    (apply orig args)))
+
+(advice-add 'ask-user-about-supersession-threat :around
+            #'stile--silence-supersession)
+
+
 ;; -- low-level subprocess helpers -------------------------------------------
 
 (defun stile--call-json (&rest args)
