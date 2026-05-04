@@ -33,6 +33,39 @@ done
 [[ -f "$FILE" ]] || touch "$FILE"
 stile init "$FILE" --json >/dev/null 2>&1 || true
 
+# Sidecar path next to FILE -- used in conflict-recovery messages.
+sidecar_dir() {
+    local f="$1"
+    printf '%s/.%s.stile' "$(dirname "$f")" "$(basename "$f")"
+}
+
+print_conflict_recovery() {
+    local cid="${1:-}"
+    cat >&2 <<EOF
+A pending conflict on $FILE blocks every save.
+Recover by ONE of:
+  - resolve it (after hand-editing the merged file):
+      stile resolve "$FILE" --use-merged
+  - or wipe the sidecar to start fresh (drops base history):
+      rm -rf "$(sidecar_dir "$FILE")"
+EOF
+    [[ -n "$cid" ]] && echo "Pending conflict id: $cid" >&2
+}
+
+# Refuse to start if a conflict is already pending -- otherwise every
+# agent will burn Claude calls on saves that can never succeed.
+init_status=$(stile status "$FILE" --json)
+if [[ "$(printf '%s' "$init_status" | jq -r .status)" == "conflicted" ]]; then
+    cid=$(printf '%s' "$init_status" | jq -r '.pending_conflict.id')
+    print_conflict_recovery "$cid"
+    exit 5
+fi
+
+# Race-safe one-shot lock: the first agent to win `mkdir $LOCK_DIR/announced`
+# prints recovery instructions; the others stay quiet.
+LOCK_DIR=$(mktemp -d -t stile-headless.XXXXXX)
+PARENT_PID=$$
+
 # Per-role agent loop. Runs in a subshell so they're independent.
 agent() {
     local role="$1"
@@ -106,6 +139,15 @@ $file_content
                 err=$(printf '%s' "$result" | jq -r '.error')
                 msg=$(printf '%s' "$result" | jq -r '.message')
                 printf '[%-12s] error: %s -- %s\n' "agent:$role" "$err" "$msg"
+                if [[ "$err" == "ConflictPending" ]]; then
+                    # Stop the whole script: every save will fail until
+                    # the user resolves or wipes the sidecar.
+                    if mkdir "$LOCK_DIR/announced" 2>/dev/null; then
+                        print_conflict_recovery
+                    fi
+                    kill -TERM "$PARENT_PID" 2>/dev/null || true
+                    return 0
+                fi
                 ;;
             *)
                 printf '[%-12s] unexpected: %s\n' "agent:$role" "$result"
@@ -123,7 +165,7 @@ for role in "${ROLES[@]}"; do
     agent "$role" &
     pids+=($!)
 done
-trap 'kill "${pids[@]}" 2>/dev/null || true' EXIT INT TERM
+trap 'kill "${pids[@]}" 2>/dev/null || true; rm -rf "$LOCK_DIR"' EXIT INT TERM
 
 echo "${#ROLES[@]} agents running on $FILE -- Ctrl-C to stop." >&2
 wait
