@@ -11,7 +11,7 @@ working `cotype` on `PATH`, installed from `cli/`.
 ## Requirements
 
 - Emacs ≥ 27.1 (built-in `json-parse-buffer`)
-- `cotype` on `PATH` (`pip install -e cli/` from the monorepo root)
+- `cotype` on `PATH` (`pip install cotype`, or `pip install -e cli/` from a monorepo clone)
 - POSIX `diff3` (from `diffutils`)
 
 ## Install

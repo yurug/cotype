@@ -116,7 +116,7 @@ shared by all of them.
 
 | Path                                           | What lives there                                                                        |
 |------------------------------------------------|-----------------------------------------------------------------------------------------|
-| [`cli/`](cli/)                                 | The Python CLI implementation. `pip install -e cli/` to build.                          |
+| [`cli/`](cli/)                                 | The Python CLI implementation. `pip install cotype` (or `pip install -e cli/` for dev). |
 | [`editors/emacs/`](editors/emacs/)             | `cotype-mode` minor mode for Emacs ≥ 27.1.                                               |
 | [`examples/agent-loop/`](examples/agent-loop/) | Offline-runnable demo of the user-and-agents protocol.                                  |
 | [`examples/demo/`](examples/demo/)             | 15-second scripted demo (VHS / asciinema) for social media.                             |
@@ -129,12 +129,18 @@ Future editor modes will land as siblings under `editors/` (`vim`, `vscode`, …
 Requires **Python ≥ 3.11** and **POSIX `diff3`** (from `diffutils`).
 
 ```bash
-git clone https://github.com/yurug/cotype.git
-cd cotype
-pip install -e cli/
+pip install cotype
 
 # verify
 cotype --help
+```
+
+For development (editable install from a clone):
+
+```bash
+git clone https://github.com/yurug/cotype.git
+cd cotype
+pip install -e cli/
 ```
 
 ## CLI surface (in one screen)
