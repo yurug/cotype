@@ -6,7 +6,7 @@
 ;; Author: Yann Régis-Gianas <yann@regis-gianas.org>
 ;; URL: https://github.com/yurug/stile
 ;; Package-Requires: ((emacs "27.1"))
-;; Version: 0.1.0
+;; Version: 0.2.0
 ;; Keywords: tools, files, vc
 
 ;;; Commentary:

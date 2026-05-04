@@ -7,6 +7,13 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-05-04
+
+Two coupled releases under the v0.2 tag-namespace:
+
+- `stile` (Python CLI), tagged **`v0.2.0`**.
+- `stile.el` (Emacs minor mode), tagged **`emacs-v0.2.0`**.
+
 ### Changed (BREAKING) — inline conflict resolution
 
 The conflict UX now follows the git-merge pattern: instead of leaving FILE
@@ -23,17 +30,57 @@ inline.
   diff3 markers remain, otherwise snapshots and clears the pending
   conflict. The old `--conflict-id ID < bytes` and `--use-merged` forms
   are removed; `resolve` takes no flags besides `--actor` / `--json`.
+- `ConflictIdMismatch` error class removed (no caller-supplied id any
+  longer; conflict ids are uuid4-hex generated server-side and never
+  composed from CLI input).
 - Product invariant I4 loosened: FILE *does* change on conflict (gains
   markers); the protection is now that further saves are blocked with
   `ConflictPending` until the markers are gone and `resolve` runs.
-- `examples/headless-agents.sh` idles agents while a conflict is pending
-  instead of burning Claude calls on saves that can never succeed.
-- `stile.el`: new `M-x stile-resolve` (replaces `stile-resolve-use-merged`).
-  On a save's conflict reply, the buffer is reverted so the user sees
-  the markers in their own editor.
 
 Migration: callers using the old `--use-merged` or `--conflict-id` forms
 must switch to the new flow (edit FILE, then `stile resolve FILE`).
+
+### Added — `stile.el`
+
+- `M-x stile-resolve` (replaces `stile-resolve-use-merged`). On a save's
+  conflict reply, the buffer is reverted to show the markers in place;
+  after the user edits them out, `stile-resolve` flushes the buffer to
+  disk and clears the pending conflict.
+- Suppression of Emacs's modtime prompts inside stile-mode buffers:
+  `ask-user-about-supersession-threat` ("FILE has changed since visited;
+  really edit?") and `basic-save-buffer`'s ("Save anyway?") are both
+  silenced by refreshing visited-file-modtime — stile already
+  coordinates concurrent saves, so the safety nets are pure friction.
+- `stile--ensure-auto-revert` re-arms `auto-revert-mode` after every
+  programmatic revert; Emacs's `preserve-modes` only protects the major
+  mode plus a hand-coded list of minors, so without this auto-revert
+  was silently dropped on every conflict-induced revert.
+
+### Added — `examples/headless-agents.sh`
+
+A new robust headless harness (referenced from `README.md`) that spawns
+N Claude agents on a stile-managed file:
+
+- Section-aware splice: parses Claude's full-file output, extracts only
+  the agent's own `## agent:<role>` body, and splices it into the bytes
+  read from `base_path`. By construction, two agents editing two
+  different sections cannot produce a 3-way conflict.
+- Pre-allocated section template (with per-role placeholder anchors)
+  on first run; idles all agents on a pending conflict.
+- Configurable model + stagger: `CLAUDE_MODEL` (default
+  `claude-sonnet-4-6`) and `STAGGER` (default 3 s) for demo-friendly
+  pacing.
+- Skip-on-no-change guard kills the "noop save with whitespace drift"
+  race that shows up when Claude returns a near-byte-identical copy.
+
+### Added — `examples/demo-crepe/`
+
+A new VHS-recordable brainstorming demo: three personas (cook,
+logistics, ux-designer) plus a note-taker collaborate with a simulated
+user on a stile-managed `brainstorm.md` to design a school crêpe stand
+serving 300 in 2 hours. Three-pane tmux layout (Emacs viewer up top,
+puppeteer + agents log at the bottom), three rounds of user input, then
+agents idle on the close.
 
 ## [0.1.0] — 2026-05-03
 
@@ -100,5 +147,6 @@ First public release. Two coupled releases under one tag-namespace:
 - No event sourcing, no CRDT, no semantic edits, no multi-file
   transactions.
 
-[Unreleased]: https://github.com/yurug/stile/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/yurug/stile/compare/v0.2.0...HEAD
+[0.2.0]:      https://github.com/yurug/stile/releases/tag/v0.2.0
 [0.1.0]:      https://github.com/yurug/stile/releases/tag/v0.1.0
