@@ -5,10 +5,20 @@
 # file content, and submits the response through `stile save`. The
 # 3-way merge serialises concurrent edits across actors.
 #
-# When `stile save` produces a conflict the file gets diff3-style
-# `<<<<<<<` / `>>>>>>>` markers. While markers are present, agents
-# stop calling Claude -- the user is expected to edit FILE in their
-# editor and run `stile resolve FILE`. Agents resume automatically
+# Conflict-avoidance protocol (best-effort, not enforced):
+#   - On startup we pre-allocate `## user` and one `## agent:<role>`
+#     header per agent, separated by a blank line. This gives diff3
+#     stable anchors so two simultaneous saves don't end up appending
+#     adjacent text at end-of-file (the worst case for diff3).
+#   - The prompt tells each agent it owns ONLY its `## agent:<role>`
+#     section's body and must preserve every other byte verbatim.
+#   - Agent startup is staggered across the polling INTERVAL so the N
+#     agents fire on N different phases instead of all on the same tick.
+#
+# When `stile save` produces a conflict despite all that, the file gets
+# diff3-style `<<<<<<<` / `>>>>>>>` markers. While markers are present,
+# agents stop calling Claude -- the user is expected to edit FILE in
+# their editor and run `stile resolve FILE`. Agents resume automatically
 # once resolve clears the pending state.
 #
 # Usage:
@@ -37,6 +47,22 @@ done
 
 # Make the file managed by stile if it isn't already (idempotent).
 [[ -f "$FILE" ]] || touch "$FILE"
+
+# Pre-allocate section headers when FILE is empty. With every section
+# header already present (separated by blank lines), each agent's edit
+# lands inside its own pre-existing slot rather than appending at EOF
+# next to every other agent's append -- which is diff3's worst case.
+if ! [[ -s "$FILE" ]]; then
+    {
+        echo "## user"
+        echo
+        for role in "${ROLES[@]}"; do
+            echo "## agent:$role"
+            echo
+        done
+    } > "$FILE"
+fi
+
 stile init "$FILE" --json >/dev/null 2>&1 || true
 
 print_conflict_hint() {
@@ -49,9 +75,21 @@ EOF
 }
 
 # Per-role agent loop. Runs in a subshell so each role is independent.
+# `idx` and `total` are used only for the startup stagger.
 agent() {
     local role="$1"
+    local idx="$2"
+    local total="$3"
     local last_sha=""
+
+    # Stagger startup phase: agent N of M sleeps (N * INTERVAL / M)
+    # seconds before its first iteration. With 3 agents at 5s interval
+    # this puts them on phases 0s, ~1.67s, ~3.33s instead of all
+    # firing on the same 0s/5s/10s ticks.
+    local stagger
+    stagger=$(awk "BEGIN { printf \"%.3f\", $idx * $INTERVAL / $total }")
+    sleep "$stagger"
+
     while true; do
         # Idle while a conflict is pending: no save can succeed and the
         # user is the only actor who can resolve it. Saves Claude calls.
@@ -79,13 +117,14 @@ agent() {
         local file_content
         file_content=$(cat "$base_path")
         local prompt
-        prompt="You are agent:$role working in a Markdown file shared with a human user and other agents. The file is managed by stile (each save goes through a 3-way merge).
+        prompt="You are agent:$role collaborating with a human user and other agents on a shared Markdown file managed by stile (which 3-way-merges concurrent saves).
 
-- Read the entire current file shown below.
-- If a \`## user\` block, or another agent, has added something that calls for your input AS $role, edit (or append) a \`## agent:$role\` section to respond. If the section already exists, REPLACE its body in place; if it doesn't yet exist, append a new \`## agent:$role\` section AFTER all existing sections.
-- If there is nothing new for you to do, output the file UNCHANGED.
+PROTOCOL (follow byte-exactly to avoid merge conflicts):
+1. Your section is \`## agent:$role\`. You may edit ONLY the body of that section (the lines between its header and the next \`## \` header, or end-of-file).
+2. Every other byte of the file -- the \`## user\` header and body, every other \`## agent:<role>\` header and body, every blank line and every space -- MUST be preserved byte-for-byte. Do NOT reformat, reorder, fix typos, normalise whitespace, add or remove blank lines, or change anything outside your own section's body.
+3. If the user or another agent has not asked for your input AS $role since your last reply, output the file UNCHANGED, byte-for-byte.
 
-Output ONLY the entire new file content. No preamble, no codefences around the whole file, no closing remarks.
+Output ONLY the entire new file content. No preamble, no code fences, no commentary.
 
 <file>
 $file_content
@@ -141,8 +180,10 @@ $file_content
 
 # Background one agent per role; track PIDs so we can clean up on exit.
 pids=()
-for role in "${ROLES[@]}"; do
-    agent "$role" &
+total=${#ROLES[@]}
+for i in "${!ROLES[@]}"; do
+    role="${ROLES[$i]}"
+    agent "$role" "$i" "$total" &
     pids+=($!)
 done
 trap 'kill "${pids[@]}" 2>/dev/null || true' EXIT INT TERM
