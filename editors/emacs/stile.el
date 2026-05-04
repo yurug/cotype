@@ -125,11 +125,26 @@ stile open FILE)."
     (set-buffer-modified-p nil)
     (set-visited-file-modtime)))
 
+(defun stile--ensure-auto-revert ()
+  "Re-enable `auto-revert-mode' if it slipped off.
+Emacs's `revert-buffer' with `preserve-modes=t' only protects the major
+mode plus a hand-coded list of minors (font-lock, enriched). Arbitrary
+minor modes like `auto-revert-mode' are silently disabled by every
+programmatic revert -- including the one we issue from
+`stile--save-via-stile' on conflict. Call this whenever we've just
+reverted the buffer ourselves, and from `after-revert-hook' as a belt
+to the suspenders."
+  (when (and stile-mode stile-auto-revert
+             (not (bound-and-true-p auto-revert-mode)))
+    (auto-revert-mode 1)))
+
 (defun stile--refresh-base-sha ()
   "Re-run `stile open' to refresh `stile--base-sha' WITHOUT touching the buffer.
 Hook target for `after-revert-hook': auto-revert has just reloaded the
-buffer from disk, so we just need a fresh base_sha for subsequent saves."
+buffer from disk, so we just need a fresh base_sha for subsequent saves.
+Also re-arms `auto-revert-mode' in case the revert killed it."
   (when (and stile-mode (buffer-file-name))
+    (stile--ensure-auto-revert)
     (let* ((resp (stile--call-json "open" (buffer-file-name) "--json"))
            (data (cdr resp)))
       (when data
@@ -183,7 +198,8 @@ Emacs' default file-write."
         (setq stile--base-sha sha)
         ;; For mode=merged, FILE differs from what we sent; reload it.
         (when (string= mode "merged")
-          (revert-buffer t t t))
+          (revert-buffer t t t)
+          (stile--ensure-auto-revert))
         (set-buffer-modified-p nil)
         (set-visited-file-modtime)
         (message "stile: saved (%s)" mode)
@@ -195,6 +211,8 @@ Emacs' default file-write."
       (let ((cid (plist-get data :conflict_id))
             (sha (plist-get data :markers_sha)))
         (revert-buffer t t t)
+        ;; revert-buffer with preserve-modes=t still kills auto-revert.
+        (stile--ensure-auto-revert)
         (when sha (setq stile--base-sha sha))
         (set-buffer-modified-p nil)
         (set-visited-file-modtime)
