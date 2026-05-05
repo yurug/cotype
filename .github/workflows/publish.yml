@@ -1,0 +1,77 @@
+name: publish
+
+# Publish the cotype Python package to PyPI.
+#
+# Trigger: any tag matching v0.0.0 / v1.2.3 etc. (the CLI's own
+# versioning). The Emacs mode uses tags prefixed `emacs-v...` which
+# DO NOT match this pattern, so they will not trigger an upload.
+# Also runnable manually via `gh workflow run publish.yml`.
+#
+# Auth: PyPI trusted publishing (OIDC). No API token in repo secrets;
+# PyPI is configured to trust this workflow under yurug/cotype.
+# See: https://docs.pypi.org/trusted-publishers/
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+rc[0-9]+"
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    name: Build sdist + wheel
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build tooling
+        run: python -m pip install --upgrade build
+
+      - name: Build distribution
+        working-directory: cli
+        run: python -m build
+
+      # The publish job needs to download these; upload as an artifact.
+      - name: Upload dist as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: cli/dist/
+
+  publish:
+    name: Upload to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+
+    # `environment:` lets you require manual approval and gives a clean
+    # audit trail in the GitHub UI. Match this name in PyPI's trusted-
+    # publisher config.
+    environment:
+      name: pypi
+      url: https://pypi.org/project/cotype/
+
+    permissions:
+      # Required for OIDC trusted publishing.
+      id-token: write
+
+    steps:
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+          # No password / token — trusted publishing handles auth via
+          # OIDC. Falls back to PYPI_API_TOKEN if PyPI isn't configured
+          # for trusted publishing yet, but we want OIDC.
