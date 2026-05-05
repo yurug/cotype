@@ -1,250 +1,90 @@
 # cotype
 
+[![PyPI](https://img.shields.io/pypi/v/cotype.svg)](https://pypi.org/project/cotype/)
 [![tests](https://github.com/yurug/cotype/actions/workflows/test.yml/badge.svg)](https://github.com/yurug/cotype/actions/workflows/test.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-> A shared text file as a collaborative workspace — kept consistent.
+> **A shared text file as the workspace for you and your AI agents — kept consistent, save by save.**
 
-`cotype` is a small CLI that lets a user and one or more AI agents (or
-any other processes) collaborate on the **same text file at the same
-time** without losing anyone's edits. The file is the collaborative
-workspace; `cotype` is what makes every save safe.
+You write. Your agents write. **In the same file. At the same time.** No transcripts to scroll, no chat windows, no lost edits. Disjoint edits auto-merge. Overlapping edits surface as inline conflicts you settle in your editor. No actor — human, agent, or script — ever silently overwrites another.
 
-`cotype` is a very simple tool, essentially an extremely minimalistic `git`, but it
-still allows the following 
+![cotype demo: three Claude personas brainstorming with a user in one shared file](examples/demo-crepe/demo.gif)
 
-<Inline the GIF of the demo here>
+*Three Claude personas (cook, logistics, ux-designer) plus a note-taker brainstorm a school crêpe stand with the user — all in one `brainstorm.md`. Each persona owns its `## agent:<role>` section. Cotype reconciles every save in the background.*
 
+---
 
-## Use case: a file as the conversation
+## Why this, instead of a chat?
 
-Instead of a sequential chat, point your agent at a shared file. The user
-writes; the agent reads and edits in place to respond, ask, or do work. Any
-number of agents can run in parallel — each goes through `cotype open` →
-compute → `cotype save`. `cotype` decides per save whether it's a clean direct
-write, an auto-merge of disjoint edits, or a conflict the user must resolve.
+Chat transcripts drift away from the work. The thing you actually want at the end of the session — the design doc, the spec, the code, the meeting notes — is buried under twenty rounds of "thanks, here's the updated version."
 
-A typical session on `task.md`:
+**Flip it.** The file *is* the conversation:
 
-```markdown
-# Refactor the auth module
+- **You** type your question or instruction under `## user`.
+- **Each agent** edits its own `## agent:<name>` section in place to reply.
+- **Everyone** sees the latest version in their editor in real time.
+- **Concurrent saves** are reconciled by 3-way merge — the same machinery git uses, but tiny, single-file, and protocol-driven.
 
-## user
-Look at src/auth.py and tell me what's brittle.
+If you've ever lost an agent's edits to your own save (or vice versa), that's the problem cotype fixes.
 
-## agent (review)            <-- agent appended this section, cotype saved
-Three things stand out:
-1. session token written to disk in plaintext
-2. retry loop has no backoff
-3. logout clears the session map without locking
+---
 
-What would you like me to fix first?
-
-## user                      <-- user typed this, cotype saved
-Fix #1.
-
-## agent (status)            <-- agent appended this section in parallel
-Wrote PR #42 against src/auth.py. Diff:
-   ...
-```
-
-While the user types under `## user`, the agent can edit `## agent (status)`
-in parallel. Disjoint sections → `cotype` auto-merges. Same section, both
-sides → `cotype` conflicts and dumps the three versions for the user to settle.
-No actor ever silently overwrites another.
-
-## Recipe: spawn N headless Claude agents on one file
-
-The simplest "agents collaborate with you on a shared file" pattern is a
-loop per role. Each agent polls, asks Claude for its take, and submits
-through `cotype save`. You edit `task.md` in any editor; `cotype`'s 3-way
-merge keeps everyone consistent.
-
-```bash
-# requires cotype, claude (Claude Code CLI), and jq on PATH.
-cotype init task.md
-for role in reviewer linter tester; do
-  (
-    while true; do
-      meta=$(cotype open task.md --json)
-      base_sha=$(echo "$meta" | jq -r .base_sha)
-      base_path=$(echo "$meta" | jq -r .base_path)
-      # `claude --print -p PROMPT` ignores stdin -- splice the current
-      # file content directly into the prompt.
-      proposed=$(claude --print -p "You are agent:$role in a cotype-managed
-shared Markdown file. Edit your '## agent:$role' section in place to
-respond to the user's latest input; output the entire file unchanged
-otherwise.
-
-<file>
-$(cat "$base_path")
-</file>")
-      printf '%s' "$proposed" | cotype save task.md \
-        --base-sha "$base_sha" --actor "agent:$role" --json
-      sleep 5
-    done
-  ) &
-done
-wait     # Ctrl-C to stop all agents
-```
-
-A polished, runnable version with cleanup, error handling, and per-role
-PID tracking lives at
-[`examples/headless-agents.sh`](examples/headless-agents.sh):
-
-```bash
-./examples/headless-agents.sh task.md reviewer linter tester
-```
-
-## Command description
-
-A six-command tour:
-
-| Command          | What it does                                                                                                                                                                                                              |
-|------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `cotype init`     | Start managing FILE: create the sidecar and capture the current contents as the first base snapshot.                                                                                                                      |
-| `cotype open`     | Capture a fresh base snapshot before you edit (or before your agent does). Returns `base_sha` and a `base_path` to read the bytes from.                                                                                   |
-| `cotype save`     | Submit a proposed new version against a base. Outcome is `direct` (clean write), `merged` (3-way merge), `noop` (proposed equals current), or `conflict` (overlapping edits — FILE is rewritten with `<<<<<<<` / `>>>>>>>` diff3 markers and a forensic dump is kept in the sidecar). |
-| `cotype status`   | Report whether FILE is `unmanaged`, `clean`, or `conflicted` (with the pending conflict id).                                                                                                                              |
-| `cotype resolve`  | Clear a pending conflict by accepting FILE's current contents. Edit FILE in your editor to remove the diff3 markers, then run `cotype resolve FILE`.                                                                       |
-| `cotype cat-base` | Print a base snapshot's bytes to stdout (useful in shell pipelines: `cotype cat-base FILE \| my-agent \| cotype save FILE --base-sha …`).                                                                                   |
-
-## Repository layout
-
-This is a small monorepo: the CLI lives next to one self-contained folder per
-editor mode. Each folder has its own README; the knowledge base at `kb/` is
-shared by all of them.
-
-| Path                                           | What lives there                                                                        |
-|------------------------------------------------|-----------------------------------------------------------------------------------------|
-| [`cli/`](cli/)                                 | The Python CLI implementation. `pip install cotype` (or `pip install -e cli/` for dev). |
-| [`editors/emacs/`](editors/emacs/)             | `cotype-mode` minor mode for Emacs ≥ 27.1.                                               |
-| [`examples/agent-loop/`](examples/agent-loop/) | Offline-runnable demo of the user-and-agents protocol.                                  |
-| [`examples/demo/`](examples/demo/)             | 15-second scripted demo (VHS / asciinema) for social media.                             |
-| [`kb/`](kb/)                                   | Agent-optimised knowledge base: PRD, normative spec, properties, ADRs, audit checklist. |
-
-Future editor modes will land as siblings under `editors/` (`vim`, `vscode`, …).
-
-## Install the CLI
-
-Requires **Python ≥ 3.11** and **POSIX `diff3`** (from `diffutils`).
+## Install
 
 ```bash
 pip install cotype
-
-# verify
-cotype --help
 ```
 
-For development (editable install from a clone):
+Requires Python ≥ 3.11 and POSIX `diff3` (in `diffutils`, present on every Linux/macOS).
+
+## 30-second tour
 
 ```bash
-git clone https://github.com/yurug/cotype.git
-cd cotype
-pip install -e cli/
-```
+echo "# notes" > task.md
+cotype init task.md           # start managing the file
 
-## CLI surface (in one screen)
-
-```text
-cotype init     FILE [--json]
-cotype open     FILE [--json]
-cotype save     FILE --base-sha HASH [--actor ACTOR] [--json] < proposed
-cotype status   FILE [--json]
-cotype resolve  FILE [--actor ACTOR] [--json]
-cotype cat-base FILE [--base-sha HASH]
-```
-
-`save` outcomes:
-
-| `mode`   | meaning                                                     |
-|----------|-------------------------------------------------------------|
-| `direct` | base matched current; proposed written atomically           |
-| `merged` | 3-way merge produced a clean result; merged content written |
-| `noop`   | proposed equals current; nothing to do                      |
-
-A conflict yields `status: "conflict"`, exit code `1`, and rewrites FILE
-in place with diff3 markers (`<<<<<<<` / `=======` / `>>>>>>>`). Open
-FILE in your editor, remove the markers, save, then run
-`cotype resolve FILE`. A forensic copy of the three sides is kept under
-`.<basename>.cotype/conflicts/<id>/` for diagnostics. Until `resolve` is
-called, every `cotype save` returns `ConflictPending`.
-
-`--actor` is a free-form label (e.g. `emacs`, `agent:reviewer`,
-`agent:formatter`, `me`). Stored in the conflict metadata; never affects
-semantics. There is no privileged actor — every caller plays by the same rules.
-
-## Caller protocols
-
-### Editor
-
-```text
-on file load:
-  response = cotype open FILE --json
-  buffer   = read(response.base_path)
-  base_sha = response.base_sha
-
-on save:
-  response = cotype save FILE --base-sha base_sha --actor emacs < buffer
-  case response.status:
-    saved    -> base_sha = response.sha
-    conflict -> show response.conflict_path; do not mark buffer clean
-```
-
-### Agent / process
-
-```bash
+# capture a base, edit, save -- the universal protocol
 meta=$(cotype open task.md --json)
-base_sha=$(printf '%s' "$meta" | jq -r .base_sha)
-base_path=$(printf '%s' "$meta" | jq -r .base_path)
-
-my-agent < "$base_path" > /tmp/proposed
-cotype save task.md --base-sha "$base_sha" --actor agent:reviewer < /tmp/proposed
+base_sha=$(echo "$meta" | jq -r .base_sha)
+echo -e "# notes\n\nFirst idea." \
+  | cotype save task.md --base-sha "$base_sha" --actor me --json
 ```
 
-The agent **always** reads from `base_path`, never from `FILE` directly —
-otherwise a concurrent writer's bytes can sneak into the agent's "what I
-edited from" without `cotype` noticing. The normative form and the forbidden
-pattern that loses updates are at [`kb/spec/protocols.md`](kb/spec/protocols.md).
+`cotype --help` shows the full protocol — agents that read it can use cotype correctly without further docs.
 
-## Exit codes
+---
 
-| Code | Meaning                      |
-|------|------------------------------|
-| 0    | success                      |
-| 1    | merge conflict               |
-| 2    | usage error                  |
-| 3    | unmanaged or corrupt sidecar |
-| 4    | unknown base                 |
-| 5    | pending conflict             |
-| 6    | I/O error                    |
-| 7    | merge tool error             |
+## Run a multi-agent brainstorm
 
-## Stable error names
-
-`UsageError`, `UnsupportedFile`, `UnmanagedFile`, `CorruptSidecar`,
-`UnknownBase`, `ConflictPending`, `IoError`,
-`MergeToolError`, `InvalidUtf8`. JSON shape:
-
-```json
-{ "status": "error", "error": "<Name>", "message": "<detail>" }
-```
-
-## Why it's small
-
-`cotype` tries to be the smallest tool that can prevent lost updates: `open`,
-`save`, and a 3-way merge when the base is stale. No daemon, no event
-log, no CRDT, no network sync, no semantic edits, no multi-file
-transactions. The PRD's non-goals list is load-bearing — `cotype`
-intentionally does *one* thing.
-
-We want it to do one thing and do it right. 
-
-## Tests
+The demo above is one bash script away:
 
 ```bash
-cd cli && pip install pytest && pytest -q
+./examples/headless-agents.sh task.md cook logistics ux-designer note-taker
 ```
+
+Each agent owns a `## agent:<role>` section and replies terse on every change. By construction, two agents editing two different sections cannot conflict. Copy [`examples/headless-agents.sh`](examples/headless-agents.sh) and tweak the prompt or roles for your use case.
+
+## Editor integration
+
+- **Emacs** — `cotype-mode` minor mode lives in [`editors/emacs/`](editors/emacs/), [submitted to MELPA](https://github.com/melpa/melpa/pull/9998). Routes `C-x C-s` through `cotype save`; reverts buffers automatically when an agent writes; surfaces conflicts inline as diff3 markers in the buffer.
+- **Other editors** — the CLI is editor-agnostic; integration is just two CLI calls (`cotype open` on load, `cotype save` on write). PRs welcome.
+
+---
+
+## Documentation
+
+| Where | What |
+|---|---|
+| `cotype --help` | Self-describing; the on-screen protocol is enough for an agent to operate the tool from a sandbox. |
+| [`cli/README.md`](cli/README.md) | **CLI reference**: every command, flag, exit code, error name, and the editor / agent caller protocols. |
+| [`kb/`](kb/) | Normative spec, properties, ADRs, and design notes. Optimized for agents reading the repository. |
+| [`examples/`](examples/) | Runnable demos — the multi-agent brainstorm pictured above, plus an offline protocol-only walkthrough. |
+| [`CHANGELOG.md`](CHANGELOG.md) | Per-release notes. |
+
+## Philosophy
+
+Cotype is intentionally tiny: `open`, `save`, and a 3-way merge when the base is stale. No daemon, no event log, no CRDT, no network sync, no semantic edits, no multi-file transactions. The PRD's [non-goals list](kb/domain/prd.md) is load-bearing — cotype does *one* thing and does it right. Reach for git for project-wide history; reach for cotype when one file is the unit of collaboration.
 
 ## License
 
-MIT.
+MIT. See [LICENSE](LICENSE).
