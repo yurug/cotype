@@ -7,6 +7,23 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.2.1] — 2026-05-05
+
+Patch release. No behavioural changes; polish only.
+
+- `cotype --help` is now agent-grade: top-level help shows the canonical
+  shell protocol (open → read base_path → save), the four `save`
+  outcomes, the JSON envelope contract, and the exit-code table on one
+  screen. Per-subcommand `--help` answers *when* to use each command,
+  not just argparse syntax. `--base-sha` and `--actor` flags now have
+  per-flag help strings. An LLM agent invoked in a sandbox can
+  self-discover the protocol from `cotype --help` alone, without
+  needing the repo.
+- `cotype.el`: forward-declare `cotype-mode` so the file byte-compiles
+  with no warnings; add the MELPA-required `Maintainer:` and
+  `Assisted-by:` headers; defer the global `advice-add` to first
+  `cotype-mode` activation rather than running it at file-load time.
+
 ## [0.2.0] — 2026-05-04
 
 Two coupled releases under the v0.2 tag-namespace:
@@ -167,6 +184,7 @@ First public release. Two coupled releases under one tag-namespace:
 - No event sourcing, no CRDT, no semantic edits, no multi-file
   transactions.
 
-[Unreleased]: https://github.com/yurug/cotype/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/yurug/cotype/compare/v0.2.1...HEAD
+[0.2.1]:      https://github.com/yurug/cotype/releases/tag/v0.2.1
 [0.2.0]:      https://github.com/yurug/cotype/releases/tag/v0.2.0
 [0.1.0]:      https://github.com/yurug/cotype/releases/tag/v0.1.0

@@ -8,7 +8,7 @@
 ;; Assisted-by: Claude:claude-opus-4-7
 ;; URL:        https://github.com/yurug/cotype
 ;; Package-Requires: ((emacs "27.1"))
-;; Version: 0.2.0
+;; Version: 0.2.1
 ;; Keywords: tools, files, vc
 
 ;;; Commentary:
