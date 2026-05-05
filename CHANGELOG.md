@@ -7,6 +7,19 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.2.2] — 2026-05-05
+
+CLI-only patch release; no Emacs change.
+
+- `cotype --help` gains a **MINIMIZING CONFLICTS** section listing two
+  actionable tricks an agent can apply to reduce false-positive
+  conflicts: (1) padding region boundaries with 2+ unchanged anchor
+  lines so diff3 separates hunks, and (2) splicing structurally in
+  the harness (parse → take own region → splice into base_path bytes)
+  so concurrent edits to disjoint regions cannot conflict by
+  construction. Points at `examples/headless-agents.sh` as the
+  reference Markdown recipe.
+
 ## [0.2.1] — 2026-05-05
 
 Patch release. No behavioural changes; polish only.
@@ -184,7 +197,8 @@ First public release. Two coupled releases under one tag-namespace:
 - No event sourcing, no CRDT, no semantic edits, no multi-file
   transactions.
 
-[Unreleased]: https://github.com/yurug/cotype/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/yurug/cotype/compare/v0.2.2...HEAD
+[0.2.2]:      https://github.com/yurug/cotype/releases/tag/v0.2.2
 [0.2.1]:      https://github.com/yurug/cotype/releases/tag/v0.2.1
 [0.2.0]:      https://github.com/yurug/cotype/releases/tag/v0.2.0
 [0.1.0]:      https://github.com/yurug/cotype/releases/tag/v0.1.0

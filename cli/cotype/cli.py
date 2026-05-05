@@ -50,6 +50,27 @@ OUTCOMES of `cotype save` (the "mode" field, or `status` on failure):
                 with ConflictPending until the user edits the markers out
                 and runs `cotype resolve FILE`.
 
+MINIMIZING CONFLICTS (multi-actor flows):
+
+    cotype's merge is line-based (POSIX diff3) and groups edits within
+    the same hunk -- adjacent-but-independent line edits can collide
+    even when neither side overwrites the other's bytes. Two cheap
+    tricks keep concurrent saves clean:
+
+    1. Pad boundaries.  diff3 needs ~2 unchanged lines between two
+       edit zones to treat them as separate hunks. Insert blank lines
+       or a stable sentinel comment between regions different actors
+       own. The bigger the unchanged anchor, the smaller the chance
+       of spurious conflicts.
+
+    2. Splice structurally in your harness, not at the byte level.
+       Parse the file into regions (Markdown sections, top-level
+       defs, JSON keys) and rewrite ONLY your own region's bytes.
+       Other regions then come from `base_path` byte-exact, so two
+       actors editing two different regions cannot conflict by
+       construction. `examples/headless-agents.sh` is the reference
+       recipe for the Markdown-section case.
+
 INTEGRATION:
 
     --json on every command except `cat-base` emits a parseable envelope on
