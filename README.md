@@ -22,7 +22,13 @@ pip install cotype
 
 Requires Python ≥ 3.11 and POSIX `diff3` (`diffutils`, on every Linux/macOS).
 
-> ⚠️ **For the live in-editor experience** (your buffer updates as other actors write), install the Emacs companion [`cotype-mode`](editors/emacs/) ([submitted to MELPA](https://github.com/melpa/melpa/pull/9998)). Other editors work — the CLI is editor-agnostic — but need their own auto-revert-on-change wiring; PRs welcome.
+> ⚠️ **For the live in-editor experience** (your buffer updates as other actors write), install one of the editor companions:
+>
+> - **Emacs**: [`cotype-mode`](editors/emacs/) — [submitted to MELPA](https://github.com/melpa/melpa/pull/9998).
+> - **vim / neovim**: [pure-vimscript plugin](editors/vim/) — vim-plug / lazy.nvim / packer install snippets in the README.
+> - **VS Code**: in progress.
+>
+> Without one of these, cotype still works (the CLI is editor-agnostic) but each agent reply lands in the file and you have to manually reload your editor to see it — the magic falls flat.
 
 ## How it works
 
@@ -60,7 +66,7 @@ Anything where one regular text file is the unit of collaboration:
 |---|---|
 | `cotype --help` | Self-describing; the full protocol fits on one screen. |
 | [`cli/README.md`](cli/README.md) | CLI reference: every command, flag, exit code, error name, caller protocols. |
-| [`editors/emacs/`](editors/emacs/) | `cotype-mode` for Emacs — the recommended live-experience companion. |
+| [`editors/emacs/`](editors/emacs/), [`editors/vim/`](editors/vim/) | `cotype-mode` (Emacs) and the vim/neovim plugin — live-experience companions. |
 | [github.com/yurug/chorale](https://github.com/yurug/chorale) | Multi-agent harness on top of cotype (the use case in the demo). |
 | [`kb/`](kb/) | Normative spec, properties, ADRs, design notes. Agent-readable. |
 | [`examples/headless-agents.sh`](examples/headless-agents.sh) | The 100-line bash recipe chorale was extracted from. |
