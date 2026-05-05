@@ -31,13 +31,18 @@ If you've ever lost an agent's edits to your own save (or vice versa), that's th
 
 ## Install
 
+For the demo above to work end-to-end you need **two** pip-installable packages plus an editor that auto-reverts on disk changes:
+
 ```bash
-pip install cotype
+pip install cotype          # the safe-save engine: this repo
+pip install chorale         # the agent harness (claude / gemini / codex / ollama / custom)
 ```
 
-Requires Python ≥ 3.11 and POSIX `diff3` (in `diffutils`, present on every Linux/macOS).
+Both require Python ≥ 3.11 and POSIX `diff3` (`diffutils`, on every Linux/macOS).
 
-## 30-second tour
+> ⚠️ **You need an editor with cotype-aware live updates** to see the agents writing into your file as it happens. Without it, you'll save your prompt and then have to manually reload to see each reply — the experience falls flat. The polished integration is **Emacs + `cotype-mode`**, in [`editors/emacs/`](editors/emacs/) ([submitted to MELPA](https://github.com/melpa/melpa/pull/9998)). It routes `C-x C-s` through `cotype save`, reverts the buffer silently when an agent writes, and surfaces conflicts inline as diff3 markers. Other editors work in principle (the CLI is editor-agnostic) but need their own auto-revert-on-change wiring; PRs welcome.
+
+## 30-second tour (CLI alone)
 
 ```bash
 echo "# notes" > task.md
@@ -56,18 +61,25 @@ echo -e "# notes\n\nFirst idea." \
 
 ## Run a multi-agent brainstorm
 
-The demo above is one bash script away:
+The session in the GIF above is one command away with [**chorale**](https://github.com/yurug/chorale), a separate companion CLI that drives N AI agents on top of cotype:
 
 ```bash
-./examples/headless-agents.sh task.md cook logistics ux-designer note-taker
+pip install chorale
+
+# all-claude (default)
+chorale brainstorm.md cook logistics ux-designer note-taker
+
+# mix four different brains in one chorale
+chorale brainstorm.md \
+    cook \
+    logistics@gemini \
+    ux-designer@codex:gpt-5 \
+    note-taker@ollama:llama3
 ```
 
-Each agent owns a `## agent:<role>` section and replies terse on every change. By construction, two agents editing two different sections cannot conflict. Copy [`examples/headless-agents.sh`](examples/headless-agents.sh) and tweak the prompt or roles for your use case.
+Each agent owns a `## agent:<role>` section; chorale parses each agent's reply, splices only that agent's section back into the file, and lets cotype's 3-way merge handle the rest. By construction, two agents editing two different sections cannot conflict. Built-in adapters for Claude, Gemini, Codex, and Ollama; custom backends via a small TOML config file. See https://github.com/yurug/chorale for the full feature list.
 
-## Editor integration
-
-- **Emacs** — `cotype-mode` minor mode lives in [`editors/emacs/`](editors/emacs/), [submitted to MELPA](https://github.com/melpa/melpa/pull/9998). Routes `C-x C-s` through `cotype save`; reverts buffers automatically when an agent writes; surfaces conflicts inline as diff3 markers in the buffer.
-- **Other editors** — the CLI is editor-agnostic; integration is just two CLI calls (`cotype open` on load, `cotype save` on write). PRs welcome.
+If you'd rather see the idea on one screen of bash before reaching for a Python package, [`examples/headless-agents.sh`](examples/headless-agents.sh) is the reference recipe — chorale is its production-friendly rewrite.
 
 ---
 
@@ -77,8 +89,10 @@ Each agent owns a `## agent:<role>` section and replies terse on every change. B
 |---|---|
 | `cotype --help` | Self-describing; the on-screen protocol is enough for an agent to operate the tool from a sandbox. |
 | [`cli/README.md`](cli/README.md) | **CLI reference**: every command, flag, exit code, error name, and the editor / agent caller protocols. |
+| [`editors/emacs/`](editors/emacs/) | `cotype-mode` for Emacs — the recommended companion for the live in-editor experience. |
+| [github.com/yurug/chorale](https://github.com/yurug/chorale) | The multi-agent harness from the demo: `pip install chorale` for `claude`/`gemini`/`codex`/`ollama` (and custom) brains on a cotype-managed file. |
 | [`kb/`](kb/) | Normative spec, properties, ADRs, and design notes. Optimized for agents reading the repository. |
-| [`examples/`](examples/) | Runnable demos — the multi-agent brainstorm pictured above, plus an offline protocol-only walkthrough. |
+| [`examples/`](examples/) | Runnable demos — the multi-agent brainstorm pictured above (`headless-agents.sh`, the bash-script ancestor of chorale), plus an offline protocol-only walkthrough. |
 | [`CHANGELOG.md`](CHANGELOG.md) | Per-release notes. |
 
 ## Philosophy
