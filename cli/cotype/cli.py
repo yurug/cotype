@@ -1,4 +1,56 @@
-"""CLI dispatch and JSON envelope.
+"""CLI dispatch and JSON envelope -- the thinnest layer cotype has.
+
+Where this module sits in the architecture
+==========================================
+
+Three concentric rings:
+
+    cli.py              -- argparse, dispatch, JSON envelope.
+    commands/*.py       -- one file per subcommand. Each `cmd_*'
+                           function takes parsed args, returns a dict
+                           (the success envelope), or raises a
+                           `CotypeError'.
+    everything else     -- the actual mechanism: hashing, locking,
+                           atomic writes, merge, store.
+
+This file is intentionally a "boring sandwich": parse, route, format
+output. No business logic lives here. If you find yourself wanting
+to add an `if/else' that decides what cotype DOES, that's a smell --
+push it down into `commands/' (or further, into `merge', `store',
+etc.).
+
+The JSON envelope as the primary contract
+=========================================
+
+`--json' on every command (except `cat-base', which would mix
+metadata with the bytes payload) emits a one-shot JSON document on
+stdout. Errors take the same stream:
+
+    {"status": "error", "error": "<StableName>", "message": "..."}
+
+Human-readable strings (the `else' branch in `emit_success') are
+convenience for terminal use; they are NOT a contract. Tools should
+parse `--json'.
+
+Exit codes are part of the contract
+===================================
+
+In addition to the JSON envelope, the process exit code carries
+classification information for shell pipelines. The mapping comes
+from the `exit_code' attribute on each `CotypeError' subclass; the
+one special case is `status: "conflict"' on a successful `cotype
+save', which exits with code 1 (a non-error result that callers
+typically want to detect). See `main()' near the bottom.
+
+The `cat-base' special case
+===========================
+
+`cat-base' is the one subcommand that doesn't go through the JSON
+envelope. Its success path streams raw bytes to stdout (so it
+composes in shell pipelines like `cat-base | my-agent | save'); its
+error path takes the normal stderr route. There's no `--json'
+because mixing JSON metadata with the bytes on the same stream would
+be unparseable.
 
 Spec refs: kb/spec/api-contracts.md, kb/spec/error-taxonomy.md
 """
@@ -236,9 +288,20 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def emit_success(payload: dict, *, json_mode: bool) -> None:
+    """Write a success payload to stdout in either JSON or human form.
+
+    `json_mode' True   -> pretty-printed JSON object on stdout, the
+                          parseable contract for tools.
+    `json_mode' False  -> a one-line human summary, convenience only.
+                          Format is intentionally not stable across
+                          versions; tools must use --json.
+    """
     if json_mode:
         sys.stdout.write(json_mod.dumps(payload, indent=2) + "\n")
         return
+    # Human-readable fallback. Branches per `status' field. Order
+    # matches the per-subcommand response shape documented in
+    # kb/spec/api-contracts.md.
     s = payload.get("status")
     if s == "saved":
         sys.stdout.write(f"saved ({payload['mode']}) {payload['sha']}\n")
@@ -247,7 +310,8 @@ def emit_success(payload: dict, *, json_mode: bool) -> None:
             f"conflict {payload['conflict_id']} (see {payload['conflict_path']})\n"
         )
     elif s == "ok":
-        # `init` returns sha; `open` returns base_sha.
+        # `init' returns `sha'; `open' returns `base_sha'. Same idea
+        # at the human-line level, so collapse them.
         sha = payload.get("sha") or payload.get("base_sha", "")
         sys.stdout.write(f"ok {payload.get('file', '')} {sha}\n")
     elif s == "clean":
@@ -262,11 +326,21 @@ def emit_success(payload: dict, *, json_mode: bool) -> None:
     elif s == "resolved":
         sys.stdout.write(f"resolved {payload['file']} {payload['sha']}\n")
     else:
-        # Defensive: any unexpected payload still gets shown rather than swallowed.
+        # Defensive: an unexpected payload (e.g., a future status we
+        # don't have a human pretty-printer for) still gets shown
+        # rather than silently dropped. Falls back to raw JSON dump.
         sys.stdout.write(json_mod.dumps(payload) + "\n")
 
 
 def emit_error(e: CotypeError, *, json_mode: bool) -> None:
+    """Write a CotypeError to the right stream + format.
+
+    JSON mode: error envelope on STDOUT (alongside successes), so
+    `--json'-aware callers parse one stream regardless of outcome.
+
+    Human mode: `error: <Name>: <message>' on STDERR, leaving stdout
+    clean for the success-only happy path of shell pipelines.
+    """
     if json_mode:
         sys.stdout.write(
             json_mod.dumps(
@@ -280,6 +354,21 @@ def emit_error(e: CotypeError, *, json_mode: bool) -> None:
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
+    """Top-level dispatcher: parse, route, emit, exit-code.
+
+    The structure is the simplest possible "thick parser, thin
+    main": argparse does all the validation up front; main()'s job
+    is to call the right `cmd_*' function with the right args and
+    classify the result.
+
+    Why we wrap `OSError' at the bottom: the `commands/*' modules
+    convert OS-level errors to `IoError' close to the source, but a
+    handful of stdlib calls (e.g., `parser.parse_args' indirectly
+    via argparse, or `sys.stdin.buffer.read' under odd terminal
+    states) can still raise raw `OSError'. Catching it here gives
+    those a clean exit-code path through the same `emit_error'
+    formatter.
+    """
     parser = build_parser()
     args = parser.parse_args(argv)
     json_mode = bool(getattr(args, "json", False))
@@ -289,6 +378,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         elif args.command == "open":
             payload = cmd_open(args.file)
         elif args.command == "save":
+            # `save' is the one command that consumes stdin: the
+            # proposed bytes. Read the whole stream eagerly; cotype
+            # files are typically small text files so the memory
+            # cost is fine, and streaming half a save would
+            # complicate the contract for very little benefit.
             payload = cmd_save(
                 args.file,
                 args.base_sha,
@@ -300,14 +394,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         elif args.command == "resolve":
             payload = cmd_resolve(args.file, actor=args.actor)
         elif args.command == "cat-base":
-            # cat-base bypasses the JSON envelope: success is raw bytes to
-            # stdout, errors take the normal stderr path (no --json flag).
+            # The one subcommand that bypasses the JSON envelope:
+            # success streams raw bytes to stdout. Returning early
+            # skips the `emit_success' / exit-code logic below.
             sys.stdout.buffer.write(cmd_catbase(args.file, args.base_sha))
             return 0
         else:  # pragma: no cover -- argparse already enforces required=True
             raise UsageError(f"unknown command: {args.command}")
         emit_success(payload, json_mode=json_mode)
-        # Conflict on save is a non-error result with exit code 1.
+        # `conflict' on save is a non-error RESULT, but it gets exit
+        # code 1 because shell pipelines typically want to branch on
+        # it (`cotype save FILE ... || handle_conflict').
         if payload.get("status") == "conflict":
             return 1
         return 0
@@ -315,5 +412,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         emit_error(e, json_mode=json_mode)
         return e.exit_code
     except OSError as e:
+        # Unwrap into IoError so the exit code and JSON envelope
+        # match what callers expect (see emit_error).
         emit_error(IoError(str(e)), json_mode=json_mode)
         return 6
