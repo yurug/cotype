@@ -75,4 +75,4 @@ Properties P1-P15 mentioned in docstrings are defined in
 the wheel). They are the testable invariants the implementation
 upholds.
 """
-__version__ = "0.2.2"
+__version__ = "0.2.3"

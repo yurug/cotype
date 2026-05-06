@@ -7,6 +7,22 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.2.3] — 2026-05-06
+
+CLI-only patch release; documentation-only.
+
+- **Literate-programming pass over `cli/cotype/`.** No behavioural
+  change, no API change. Module-level docstrings, function docstrings,
+  and inline comments rewritten so that the source itself is now a
+  pedagogical introduction to cotype's design: the byte-exact hashing
+  invariant, the sidecar layout, the `tmp -> fsync -> rename ->
+  fsync(parent)' atomic-write ritual, the diff3 argument-order trap,
+  the branch order in `cmd_save`, the inline-markers conflict UX
+  tradeoff, and the race-free `open` -> `read(base_path)` -> `save`
+  protocol are all explained in the source. Reading the package now
+  teaches the model; the formal spec under `kb/` remains the
+  authoritative reference.
+
 ## [0.2.2] — 2026-05-05
 
 CLI-only patch release; no Emacs change.
@@ -197,7 +213,8 @@ First public release. Two coupled releases under one tag-namespace:
 - No event sourcing, no CRDT, no semantic edits, no multi-file
   transactions.
 
-[Unreleased]: https://github.com/yurug/cotype/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/yurug/cotype/compare/v0.2.3...HEAD
+[0.2.3]:      https://github.com/yurug/cotype/releases/tag/v0.2.3
 [0.2.2]:      https://github.com/yurug/cotype/releases/tag/v0.2.2
 [0.2.1]:      https://github.com/yurug/cotype/releases/tag/v0.2.1
 [0.2.0]:      https://github.com/yurug/cotype/releases/tag/v0.2.0
