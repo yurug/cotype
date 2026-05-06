@@ -2,7 +2,7 @@
 " Maintainer:  Yann Régis-Gianas <yann@regis-gianas.org>
 " Assisted-by: Claude:claude-opus-4-7
 " License:     MIT
-" Version:     0.1.0
+" Version:     0.1.1
 "
 " A vim/nvim plugin that routes saves of a cotype-managed file through
 " `cotype save', so the file can be edited concurrently by you, AI
@@ -259,6 +259,49 @@ function! s:Init() abort
   endif
 endfunction
 
+" -- auto-revert timer -------------------------------------------------
+"
+" `CursorHold' on its own only fires ONCE after an idle period, not
+" repeatedly -- so if you sit watching the file without touching the
+" keyboard, vim never re-checks the file's mtime and an external write
+" is invisible until you tap a key. To match the Emacs companion's
+" behaviour we drive `:checktime' from a true repeating timer (`timer_start',
+" available in vim >= 8.0 and every neovim).
+
+function! s:CheckTimeForTimer(timer) abort
+  for l:buf in getbufinfo()
+    if get(l:buf.variables, 'cotype_timer_id', -1) == a:timer
+      execute 'silent! checktime ' . l:buf.bufnr
+      return
+    endif
+  endfor
+  " Buffer (or its variable) is gone; stop firing.
+  call timer_stop(a:timer)
+endfunction
+
+function! s:StartTimer() abort
+  if exists('b:cotype_timer_id')
+    return
+  endif
+  if !exists('*timer_start')
+    " Pre-8.0 vim without timer support; fall back to CursorHold-only.
+    return
+  endif
+  let b:cotype_timer_id = timer_start(
+        \ g:cotype_auto_revert_interval,
+        \ function('s:CheckTimeForTimer'),
+        \ {'repeat': -1})
+endfunction
+
+function! s:StopTimer() abort
+  if exists('b:cotype_timer_id')
+    if exists('*timer_stop')
+      call timer_stop(b:cotype_timer_id)
+    endif
+    unlet b:cotype_timer_id
+  endif
+endfunction
+
 " -- enable / disable mode ---------------------------------------------
 
 function! s:Enable() abort
@@ -266,24 +309,32 @@ function! s:Enable() abort
     autocmd! * <buffer>
     autocmd BufWriteCmd <buffer> call s:Save()
     if g:cotype_auto_revert
+      " Belt to the timer's suspenders: `:checktime' on idle too.
       autocmd CursorHold,CursorHoldI <buffer> silent! checktime
+      " If the buffer is unloaded (e.g., :bd), drop the timer.
+      autocmd BufUnload <buffer> call s:StopTimer()
     endif
   augroup END
   if g:cotype_auto_revert
-    " `set autoread' makes vim silently reload the buffer when the file
-    " changes externally AND the buffer is unmodified -- exactly what
-    " we want when an agent's save lands.
+    " `set autoread' tells vim it's allowed to silently reload the
+    " buffer when the file changes externally AND the buffer is
+    " unmodified -- exactly what we want when an agent's save lands.
     setlocal autoread
-    " Faster CursorHold tick = faster auto-revert detection.
+    " Floor `&updatetime' so the (now belt-and-braces) CursorHold also
+    " ticks fast when it does fire.
     if &updatetime > g:cotype_auto_revert_interval
       let &updatetime = g:cotype_auto_revert_interval
     endif
+    " The actual periodic poll: a repeating timer that runs `:checktime'
+    " on this buffer regardless of cursor activity.
+    call s:StartTimer()
   endif
   let b:cotype_enabled = 1
   call s:Open()
 endfunction
 
 function! s:Disable() abort
+  call s:StopTimer()
   augroup cotype_buffer
     autocmd! * <buffer>
   augroup END

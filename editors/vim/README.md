@@ -4,12 +4,12 @@ A small plugin that routes saves of a cotype-managed file through
 `cotype save`, so the file can be edited concurrently by you, AI agents,
 and other processes without lost updates.
 
-Works in both **vim** (≥ 7.4) and **neovim** (≥ 0.5). Pure vimscript;
+Works in both **vim** (≥ 8.0) and **neovim** (≥ 0.5). Pure vimscript;
 no Lua required, no compiled extensions.
 
 ## Requirements
 
-- vim ≥ 7.4 or neovim ≥ 0.5
+- vim ≥ 8.0 (needs `timer_start` for the auto-revert poll) or neovim ≥ 0.5
 - `cotype` on `PATH` (`pip install cotype`)
 - POSIX `diff3` (from `diffutils`)
 
@@ -100,9 +100,12 @@ Set these *before* the plugin loads (e.g. in your `vimrc` / `init.lua`):
 
 ## Concurrent writes
 
-With `g:cotype_auto_revert = 1` (the default) and the plugin's
-`'autoread'` + `CursorHold :checktime` setup, external writes via
-cotype show up in your buffer within ~1 s of the next idle moment.
+With `g:cotype_auto_revert = 1` (the default), the plugin starts a
+buffer-local repeating timer (`timer_start`) that runs `:checktime`
+every `g:cotype_auto_revert_interval` ms (1 s by default), regardless
+of cursor activity. Combined with `'autoread'`, external writes via
+cotype show up in your buffer within ~1 s — even if your hands are off
+the keyboard.
 
 If your buffer is **modified** when an external write lands, vim still
 warns *"WARNING: The file has been changed since reading it!!!"* —
