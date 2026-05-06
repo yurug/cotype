@@ -31,13 +31,29 @@ let g:cotype_auto_revert = 1
 " Faster CursorHold tick = faster auto-revert detection of agent writes.
 let g:cotype_auto_revert_interval = 300
 
-" -- Demo helper for the puppeteer --------------------------------------
+" -- Demo helpers for the puppeteer -------------------------------------
 "
-" Position cursor on a fresh blank line at the end of `## user''s
-" content and start insert mode. Mirrors the Emacs companion's
-" `cotype-demo-position-for-user'.
+" The auto-revert timer that the cotype plugin starts on enable
+" (`b:cotype_timer_id') ticks `:checktime' every ~1 s regardless of
+" cursor activity. That's exactly what we want most of the time -- a
+" hands-off viewer sees agent replies live -- but it RACES with the
+" puppeteer's typing: by round 2, agents have written to the file, the
+" buffer is modified (we just appended blank lines for the user to
+" type into), and a checktime tick will either kick vim out of insert
+" mode or surface a "file changed" message that swallows the next
+" few keys. Symptom: the first few characters of rounds 2 and 3 go
+" missing.
+"
+" Workaround: pause the timer while the puppeteer is in a turn
+" (`:CotypeDemoPositionForUser') and resume it once the save lands
+" (`:CotypeDemoResumeTimer', chained after `:w`).
 
 function! CotypeDemoPositionForUser() abort
+  " Pause auto-revert until the save chain calls Resume.
+  if exists('b:cotype_timer_id') && exists('*timer_pause')
+    call timer_pause(b:cotype_timer_id, 1)
+  endif
+
   call cursor(1, 1)
   if search('\v^## user\s*$', 'cW') == 0
     echohl ErrorMsg
@@ -63,4 +79,11 @@ function! CotypeDemoPositionForUser() abort
   startinsert
 endfunction
 
+function! CotypeDemoResumeTimer() abort
+  if exists('b:cotype_timer_id') && exists('*timer_pause')
+    call timer_pause(b:cotype_timer_id, 0)
+  endif
+endfunction
+
 command! CotypeDemoPositionForUser call CotypeDemoPositionForUser()
+command! CotypeDemoResumeTimer    call CotypeDemoResumeTimer()

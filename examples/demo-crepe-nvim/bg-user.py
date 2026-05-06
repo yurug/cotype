@@ -61,7 +61,9 @@ def type_human(pane: str, text: str, delay: float = KEY_DELAY) -> None:
 
 
 def add_user_message(pane: str, text: str) -> None:
-    # 1. ensure we're in normal mode and trigger the position helper.
+    # 1. ensure we're in normal mode and trigger the position helper
+    #    (which pauses the cotype auto-revert timer for this buffer
+    #    so a checktime tick doesn't race with the keystrokes below).
     send(pane, "Escape")
     time.sleep(0.1)
     send_literal(pane, ":CotypeDemoPositionForUser")
@@ -70,10 +72,12 @@ def add_user_message(pane: str, text: str) -> None:
     # 2. helper put cursor at the right line + entered insert mode.
     type_human(pane, text)
     time.sleep(0.2)
-    # 3. leave insert mode and save through cotype-mode (BufWriteCmd).
+    # 3. leave insert mode, save through cotype-mode (BufWriteCmd),
+    #    and resume the auto-revert timer in the same Ex chain so
+    #    agent writes start being picked up again immediately.
     send(pane, "Escape")
     time.sleep(0.15)
-    send_literal(pane, ":w")
+    send_literal(pane, ":w | CotypeDemoResumeTimer")
     send(pane, "Enter")
     time.sleep(SETTLE_AFTER_SAVE)
 
